@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+coverage/
+# A local clone of the NERIS framework used only for codegen
+/neris-framework/

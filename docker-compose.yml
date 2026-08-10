@@ -1,0 +1,38 @@
+# Wave-0 footprint: just the API + Postgres. A volunteer department can run this
+# on a $10 VPS or a spare box. Larger deployments use the Helm chart (later).
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ofp
+      POSTGRES_PASSWORD: ofp
+      POSTGRES_DB: ofp
+    ports:
+      - "5432:5432"
+    volumes:
+      - ofp_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ofp"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgres://ofp:ofp@db:5432/ofp
+      NERIS_BASE_URL: https://api-test.neris.fsri.org/v1
+      # Leave NERIS creds unset to run in simulation mode.
+      NERIS_CLIENT_ID: ${NERIS_CLIENT_ID:-}
+      NERIS_CLIENT_SECRET: ${NERIS_CLIENT_SECRET:-}
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  ofp_db:

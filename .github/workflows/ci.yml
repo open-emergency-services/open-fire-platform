@@ -1,0 +1,22 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Clone NERIS framework for codegen
+        run: git clone --depth 1 https://github.com/ulfsri/neris-framework
+      - name: Generate NERIS schema
+        run: NERIS_FRAMEWORK_PATH=./neris-framework node packages/neris-schema/scripts/generate.mjs
+      - name: Install
+        run: npm install
+      - name: Build API
+        run: npm --prefix apps/api run build
