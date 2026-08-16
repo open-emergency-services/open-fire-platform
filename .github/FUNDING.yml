@@ -1,0 +1,6 @@
+# Enables the "Sponsor" button on GitHub. Fill in your handles before publishing.
+# See GOVERNANCE.md for how funds are used (offsetting maintainer/contributor time).
+github: [your-github-username]
+open_collective: # your-open-collective-slug
+custom:
+  - https://your-domain.example/sponsor   # replace with your hosted-plan / sponsor page

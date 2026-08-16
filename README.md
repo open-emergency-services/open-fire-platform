@@ -72,9 +72,11 @@ curl -sX POST localhost:3000/api/v1/incidents \
 
 **The software is free forever. The code and the data are yours to keep. And the price of keeping it alive goes down as more of us join — not up.**
 
-## How it stays alive
+## Who runs this & how it stays alive
 
-A nonprofit **cooperative**, not a vendor. The software is always free; departments that can, chip in what they can to fund a small maintaining team and the federal certifications — and as membership grows, everyone's share shrinks. Grants (the NERIS transition is a federal priority) and optional paid hosting bootstrap the early years. Full model in the funding one-pager.
+Straight answer: **one maintainer and an LLC — no VC, no board, no nonprofit (yet).** The software is free and open forever; money, when it comes, comes from **optional managed hosting** (for departments that don't want to self-host) and **sponsorship** — never from paywalling features or holding data hostage. Structure grows only when revenue justifies it (a foundation comes later, if the project earns it).
+
+The founder would like to make a fair living from hosting/support, and is upfront that this isn't a nonprofit. What separates it from the private-equity playbook is a short list of binding promises — open code, always-exportable data, service-not-features pricing, public prices, and a wind-down guarantee so nobody gets stranded. Read the honest, blunt version — including the real risks of depending on a young solo project — in **[GOVERNANCE.md](GOVERNANCE.md)**.
 
 ## Get involved
 
