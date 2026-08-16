@@ -76,7 +76,7 @@ curl -sX POST localhost:3000/api/v1/incidents \
 
 Straight answer: **one maintainer and an LLC — no VC, no board, no nonprofit (yet).** The software is free and open forever; money, when it comes, comes from **optional managed hosting** (for departments that don't want to self-host) and **sponsorship** — never from paywalling features or holding data hostage. Structure grows only when revenue justifies it (a foundation comes later, if the project earns it).
 
-The founder would like to make a fair living from hosting/support, and is upfront that this isn't a nonprofit. What separates it from the private-equity playbook is a short list of binding promises — open code, always-exportable data, service-not-features pricing, public prices, and a wind-down guarantee so nobody gets stranded. Read the honest, blunt version — including the real risks of depending on a young solo project — in **[GOVERNANCE.md](GOVERNANCE.md)**.
+The founder would like to make a fair living from hosting/support, and is upfront that this isn't a nonprofit. What separates it from the private-equity playbook is a short list of binding promises — open code, always-exportable data, service-not-features pricing, public prices, and a wind-down guarantee so nobody gets stranded. Read the honest, blunt version — including the real risks of depending on a young solo project — in **[GOVERNANCE.md](GOVERNANCE.md)**. The hosting cost/compliance basis (and how prices are set) is laid out openly in **[docs/HOSTING-COSTS-AND-PRICING.md](docs/HOSTING-COSTS-AND-PRICING.md)**.
 
 ## Get involved
 
