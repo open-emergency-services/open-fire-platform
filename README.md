@@ -19,6 +19,8 @@ The software fire departments depend on — to dispatch calls, file federal repo
 
 That last part — your own records trapped in a system you're being priced out of — isn't a bug. It's the business model. And it's fixable.
 
+*In fairness to the other side: ESO's CEO has publicly argued the products they acquired were on an unsustainable financial footing and needed reinvestment and pricing changes to survive (New York Times, Dec. 2025, [as reported by WGME](https://wgme.com/news/i-team/maine-fire-departments-say-software-costs-surged-after-industry-buyouts)). We take that seriously — and still believe departments deserve a free, open, un-lockable option they control themselves.*
+
 **We're building the alternative:** an open platform where the software is free, the code is public, your data is always yours to export, and the cost of keeping it alive goes *down* as more departments join — the exact opposite of the private-equity playbook. The fire service already runs on this idea. It's called mutual aid.
 
 ## What it is
@@ -100,7 +102,9 @@ Every factual and numeric claim in this README links to a primary source. That t
 - Official NERIS clients — [Python](https://github.com/ulfsri/neris-api-client) · [Node/TS](https://github.com/ulfsri/neris-nodejs-client)
 - Reused open-source building blocks — [Traccar](https://github.com/traccar/traccar) (AVL) · [Timefold](https://github.com/TimefoldAI/timefold-solver) (scheduling) · [Moodle](https://moodle.org) (LMS) · [Keycloak](https://www.keycloak.org) (identity)
 
-*Dates and figures were verified against these sources on August 16, 2026. If any link rots, the archived copy and the underlying claim are tracked in [`docs/SOURCES.md`](docs/SOURCES.md).*
+**Archived against link rot.** Every source above is also preserved two ways so the evidence survives even if a page disappears: a **Wayback Machine** snapshot and a **local PDF capture** committed to this repo under [`docs/sources/`](docs/sources/) (plus a combined [evidence dossier](docs/sources/00_source-evidence-dossier.pdf)). The full claim-by-claim ledger — exact quote, source, Wayback link, PDF, and verification date — is in [`docs/SOURCES.md`](docs/SOURCES.md).
+
+*Verified August 16, 2026. Found an error or a dead link? Open an issue — correcting the record quickly is part of the trust this project runs on.*
 
 ## License
 

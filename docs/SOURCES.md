@@ -7,6 +7,22 @@ source it, we don't say it.
 
 *Last verified: 2026-08-16.*
 
+## Archived copies (link-rot insurance)
+
+Every primary source is preserved two independent ways: a Wayback Machine snapshot
+and a local PDF text-capture committed under [`docs/sources/`](sources/). The PDFs
+are faithful text records with full provenance, not pixel-perfect page images — the
+Wayback link is the visual archive of record.
+
+| Source | Wayback snapshot | Local PDF |
+|---|---|---|
+| Klobuchar release | [web.archive.org/web/20260209051112/…](http://web.archive.org/web/20260209051112/https://www.klobuchar.senate.gov/public/index.cfm/news-releases?ID=A7A7B80E-5E02-496A-ACEA-C98546B66908) (Feb 9 2026) | [`01_klobuchar_senate_release.pdf`](sources/01_klobuchar_senate_release.pdf) |
+| Marshall release | *not yet archived — [save it](https://web.archive.org/save/https://www.marshall.senate.gov/?p=81473)* | [`02_marshall_senate_release.pdf`](sources/02_marshall_senate_release.pdf) |
+| WGME/CBS13 I-Team | [web.archive.org/web/20260217101336/…](http://web.archive.org/web/20260217101336/https://wgme.com/news/i-team/maine-fire-departments-say-software-costs-surged-after-industry-buyouts) (Feb 17 2026) | [`03_wgme_cbs13_maine.pdf`](sources/03_wgme_cbs13_maine.pdf) |
+| USFA NFIRS Sunset | [web.archive.org/web/20260720031840/…](http://web.archive.org/web/20260720031840/https://www.usfa.fema.gov/nfirs/sunset/) (Jul 20 2026) | [`04_usfa_nfirs_sunset.pdf`](sources/04_usfa_nfirs_sunset.pdf) |
+| USFA NERIS | [web.archive.org/web/20260813130313/…](http://web.archive.org/web/20260813130313/https://www.usfa.fema.gov/nfirs/neris/) (Aug 13 2026) | [`05_usfa_neris.pdf`](sources/05_usfa_neris.pdf) |
+| All five combined | — | [`00_source-evidence-dossier.pdf`](sources/00_source-evidence-dossier.pdf) |
+
 ## Pricing & consolidation
 
 | Claim (as stated) | Exact source wording | Source | Verified |
@@ -49,7 +65,14 @@ source it, we don't say it.
   **predates** the WGME article (Feb 12 2026), so we do **not** claim the article
   prompted the letter — they are independent corroborating sources.
 - We removed one paraphrase ("no new features") from an earlier draft because we
-  could not tie it to an exact quote in a primary source. If you find it verbatim
-  in a source, open a PR to restore it with the citation.
+  could not tie it to an exact quote in a primary source. The closest verifiable
+  quote is Chief Garland's: "are we getting more product for this increase in
+  dollars? And the answer was no — we're just catching up" ([WGME](https://wgme.com/news/i-team/maine-fire-departments-say-software-costs-surged-after-industry-buyouts)).
+- **The vendor's side is on the record too.** ESO CEO Eric Beck told the New York
+  Times (Dec. 2025, via WGME) that the acquired products were financially
+  unsustainable and needed reinvestment/pricing changes: "If you aren't on a
+  sustainable path, you can't reinvest, you can't ensure compliance, you can't
+  ensure innovation." We include this deliberately — a trust-first project cites
+  the counterargument, it doesn't hide it.
 - Found an error or a dead link? Open an issue. Correcting the record fast is part
   of earning the trust this project runs on.
