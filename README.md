@@ -12,9 +12,12 @@
 
 ## Why this exists
 
-The software fire departments depend on — to dispatch calls, file federal reports, chart patient care, schedule crews — has been bought up by private-equity firms and repriced. The cheap options were retired. One department's bill went from **$795 to over $5,000 a year**. Another was pushed from **$2,500 toward $15,000 over five years** with *no new features*, locked into a multi-year contract, and told that leaving would mean **losing all their records**. In January 2026, two U.S. senators asked the DOJ and FTC to investigate.
+The software fire departments depend on — to dispatch calls, file federal reports, chart patient care, schedule crews — has been bought up by private-equity firms and repriced. The cheap options get retired; departments get moved onto pricier products. Every figure below links to its primary source, because a project that asks you to trust it with your data has to show its work.
 
-That last part — *lose your records if you leave* — isn't a bug. It's the business model. And it's fixable.
+- A bipartisan **January 2026 letter** from U.S. Senators Amy Klobuchar and Roger Marshall to the DOJ and FTC reports price jumps **from $795 to more than $5,000 a year**, and that a single private-equity-backed vendor — **ESO Solutions** — provides software to **roughly 20,000 of the nation's ~30,000 fire departments**. *(Sources: [Klobuchar press release](https://www.klobuchar.senate.gov/public/index.cfm/news-releases?ID=A7A7B80E-5E02-496A-ACEA-C98546B66908) · [Marshall press release](https://www.marshall.senate.gov/?p=81473))*
+- A **February 2026** [WGME/CBS13 I-Team investigation](https://wgme.com/news/i-team/maine-fire-departments-say-software-costs-surged-after-industry-buyouts) documented Bridgton, Maine's department facing a rise **from ~$2,500/year to a projected $15,000 over five years**, under what its chief called high-pressure sales "to get you to lock into a four- or five-year contract." Rockport's chief described **"13 years of all of our training records, all of our incident reporting"** tied to one vendor's system — and a **110% cost increase** in two years.
+
+That last part — your own records trapped in a system you're being priced out of — isn't a bug. It's the business model. And it's fixable.
 
 **We're building the alternative:** an open platform where the software is free, the code is public, your data is always yours to export, and the cost of keeping it alive goes *down* as more departments join — the exact opposite of the private-equity playbook. The fire service already runs on this idea. It's called mutual aid.
 
@@ -24,7 +27,7 @@ Not another point product — **one platform** with a shared core and modules a 
 
 The plan spans the whole department — reporting, EMS, scheduling, training, prevention, apparatus, dispatch — built in five waves over years. But it starts with the piece every U.S. department now legally needs and shouldn't have to pay a fortune for:
 
-> **Wave 0 — free NERIS incident reporting.** The old federal reporting system (NFIRS) was retired in early 2026; every department must now report to its replacement, **NERIS**. This repo is a working start on a free, open, standards-native way to do exactly that.
+> **Wave 0 — free NERIS incident reporting.** The old federal reporting system, [NFIRS, was retired in early 2026](https://www.usfa.fema.gov/nfirs/sunset/): as of **January 1, 2026** all incident data goes exclusively to its replacement, [**NERIS**](https://www.usfa.fema.gov/nfirs/neris/) (run by the U.S. Fire Administration with FSRI / UL Research Institutes), and legacy NFIRS went offline that February. Every department must now report to NERIS. This repo is a working start on a free, open, standards-native way to do exactly that.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the technical shape, and the project blueprint for the full ecosystem, roadmap, and cooperative funding model.
 
@@ -78,6 +81,26 @@ A nonprofit **cooperative**, not a vendor. The software is always free; departme
 - **Funders & partners** — help underwrite open public-safety infrastructure at the moment it's most needed.
 
 📬 **[your-email] · [project link] · [chat/community link]**
+
+## Sources
+
+Every factual and numeric claim in this README links to a primary source. That transparency isn't decoration — it's the same principle as the software: no hidden anything, everything checkable.
+
+**The pricing & consolidation claims**
+- Price increase "$795 → more than $5,000/yr" and ESO's "~20,000 of ~30,000 fire departments" footprint — U.S. Senate: [Sen. Klobuchar release, Jan 21 2026](https://www.klobuchar.senate.gov/public/index.cfm/news-releases?ID=A7A7B80E-5E02-496A-ACEA-C98546B66908) · [Sen. Marshall release, Jan 2026](https://www.marshall.senate.gov/?p=81473)
+- Bridgton ~$2,500 → $15,000/5yr, "four- or five-year contract" pressure, Rockport's "13 years of… records" and 110% increase, and the ESO / Emergency Reporting vendor detail — [WGME/CBS13 I-Team, Feb 12 2026](https://wgme.com/news/i-team/maine-fire-departments-say-software-costs-surged-after-industry-buyouts)
+
+**The federal reporting transition**
+- NFIRS retirement dates (Jan 1 2026 exclusive to NERIS; offline Feb 2026) — [USFA NFIRS Sunset](https://www.usfa.fema.gov/nfirs/sunset/)
+- What NERIS is and who runs it (USFA + FSRI/UL Research Institutes + DHS S&T) — [USFA NERIS](https://www.usfa.fema.gov/nfirs/neris/)
+
+**The standards & tools this project builds on**
+- NERIS open data framework (the schema we generate types from) — [github.com/ulfsri/neris-framework](https://github.com/ulfsri/neris-framework)
+- NERIS API documentation — [api.neris.fsri.org/v1/docs](https://api.neris.fsri.org/v1/docs)
+- Official NERIS clients — [Python](https://github.com/ulfsri/neris-api-client) · [Node/TS](https://github.com/ulfsri/neris-nodejs-client)
+- Reused open-source building blocks — [Traccar](https://github.com/traccar/traccar) (AVL) · [Timefold](https://github.com/TimefoldAI/timefold-solver) (scheduling) · [Moodle](https://moodle.org) (LMS) · [Keycloak](https://www.keycloak.org) (identity)
+
+*Dates and figures were verified against these sources on August 16, 2026. If any link rots, the archived copy and the underlying claim are tracked in [`docs/SOURCES.md`](docs/SOURCES.md).*
 
 ## License
 
