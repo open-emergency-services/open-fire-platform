@@ -74,5 +74,13 @@ Wayback link is the visual archive of record.
   sustainable path, you can't reinvest, you can't ensure compliance, you can't
   ensure innovation." We include this deliberately — a trust-first project cites
   the counterargument, it doesn't hide it.
+- **A claim we investigated and excluded:** an early draft cited a "$1,200 fee just
+  to export data" (Norfolk, CT). On review it traced only to a single vendor blog
+  (convey911) and could **not** be corroborated in the NYT investigation, Marketplace,
+  WebProNews, the Rural Blog, or any other accessible source — so we removed it. If a
+  primary source (the NYT original) confirms it verbatim, we'll restore it with that
+  citation. Source article: New York Times, "Private Equity Finds a New Source of
+  Profit: Volunteer Fire Departments" (Mike Baker, Dec 14 2025, paywalled); accessible
+  corroboration for the Norfolk figures is [Marketplace](https://www.marketplace.org/story/2025/12/17/fire-department-budgets-have-a-private-equity-problem).
 - Found an error or a dead link? Open an issue. Correcting the record fast is part
   of earning the trust this project runs on.
