@@ -33,7 +33,7 @@ Then private-equity firms started buying the companies that make it — and buyi
 
 Most fire departments are **volunteer**, funded by the small towns they protect. A software bill that leaps by thousands of dollars comes straight out of the community. **Saving your life shouldn't come with a private-equity markup.**
 
-> 📺 **Watch:** economist and former U.S. Labor Secretary **Robert Reich** on this exact issue — [*"Wall Street is stealing from volunteer fire departments"*](https://www.youtube.com/watch?v=t7GXVscHPfQ). His essay: [*"Stop Private Equity from Profiting while Our Communities Burn."*](https://robertreich.substack.com/p/stop-private-equity-from-profiting)
+> 📺 **Read/watch:** economist and former U.S. Labor Secretary **Robert Reich** on this exact issue — his essay [*"Stop Private Equity from Profiting while Our Communities Burn"*](https://robertreich.substack.com/p/stop-private-equity-from-profiting) and the [short video](https://www.youtube.com/watch?v=efCz2MwGR0w) he includes with it.
 
 ---
 

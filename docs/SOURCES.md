@@ -77,7 +77,7 @@ Wayback link is the visual archive of record.
 - **Commentary vs. primary sources:** the front page links a video and essay by
   economist/former Labor Secretary **Robert Reich** ("Stop Private Equity from
   Profiting while Our Communities Burn" — [Substack, paywalled](https://robertreich.substack.com/p/stop-private-equity-from-profiting); video
-  ["Wall Street is stealing from volunteer fire departments"](https://www.youtube.com/watch?v=t7GXVscHPfQ)). Reich is **commentary/advocacy amplifying** the story, not the
+  embedded in that essay, [youtube.com/watch?v=efCz2MwGR0w](https://www.youtube.com/watch?v=efCz2MwGR0w)). Reich is **commentary/advocacy amplifying** the story, not the
   origin of the figures — the primary reporting is Mike Baker's NYT investigation
   and the accessible summaries; the numbers on the page cite those, not Reich.
 - **A claim we investigated and excluded:** an early draft cited a "$1,200 fee just
