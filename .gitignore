@@ -7,3 +7,4 @@ dist/
 coverage/
 # A local clone of the NERIS framework used only for codegen
 /neris-framework/
+open-fire-platform-wave0.tar.gz

@@ -38,7 +38,7 @@ curl -s localhost:3000/api/v1/incidents/export
 
 - Discuss anything non-trivial in an issue first.
 - One logical change per PR; include tests.
-- Sign your commits (DCO) — `git commit -s`.
+- Sign your commits (DCO) — `git commit -s`. By contributing, you agree your contributions are licensed under the project's **AGPLv3**.
 - Be kind. See `CODE_OF_CONDUCT.md`.
 
 ## Where help is most needed (Wave 0)

@@ -34,6 +34,7 @@ apps/api                  ← NestJS API
 - Schema-driven incident form UI generated from `@ofp/neris-schema`.
 - The unified UI shell (§2.6 of the blueprint) that later modules render inside.
 - CAD-feed ingestion adapters to pre-fill incidents.
+- AGPLv3 §13: any hosted deployment must offer users a link to the running (modified) source — add a visible "Source" link in the UI before offering managed hosting.
 
 ## Standards references
 
