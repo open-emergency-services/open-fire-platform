@@ -74,6 +74,12 @@ Wayback link is the visual archive of record.
   sustainable path, you can't reinvest, you can't ensure compliance, you can't
   ensure innovation." We include this deliberately — a trust-first project cites
   the counterargument, it doesn't hide it.
+- **Commentary vs. primary sources:** the front page links a video and essay by
+  economist/former Labor Secretary **Robert Reich** ("Stop Private Equity from
+  Profiting while Our Communities Burn" — [Substack, paywalled](https://robertreich.substack.com/p/stop-private-equity-from-profiting); video
+  ["Wall Street is stealing from volunteer fire departments"](https://www.youtube.com/watch?v=t7GXVscHPfQ)). Reich is **commentary/advocacy amplifying** the story, not the
+  origin of the figures — the primary reporting is Mike Baker's NYT investigation
+  and the accessible summaries; the numbers on the page cite those, not Reich.
 - **A claim we investigated and excluded:** an early draft cited a "$1,200 fee just
   to export data" (Norfolk, CT). On review it traced only to a single vendor blog
   (convey911) and could **not** be corroborated in the NYT investigation, Marketplace,
