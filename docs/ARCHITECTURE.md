@@ -34,7 +34,17 @@ apps/api                  ← NestJS API
 - Schema-driven incident form UI generated from `@ofp/neris-schema`.
 - The unified UI shell (§2.6 of the blueprint) that later modules render inside.
 - CAD-feed ingestion adapters to pre-fill incidents.
+- A **`comms` facet on the incident model** (talkgroup ids, radio-event references,
+  mayday events) — the landing spot for the planned radio seam. Cheap to bake in now.
 - AGPLv3 §13: any hosted deployment must offer users a link to the running (modified) source — add a visible "Source" link in the UI before offering managed hosting.
+
+## Planned integration: radio events
+
+`open-p25-console` (the sibling radio project) will feed radio events — push-to-talk,
+unit affiliation, and the emergency/"mayday" button — one way into the incident record,
+landing on the `comms` facet. It's a single adapter on the integration gateway, agreed
+pre-code so both projects design toward the same interface. Full spec:
+[`INTEGRATION-RADIO-SEAM.md`](./INTEGRATION-RADIO-SEAM.md).
 
 ## Standards references
 
