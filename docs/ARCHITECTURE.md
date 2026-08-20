@@ -20,6 +20,10 @@ apps/api                  ← NestJS API
   every capability is exposed only through a versioned API; the interface is a client
   with no privileged access and no logic. The core can be frozen/abandoned and still
   function while interfaces evolve independently. **Binding rule, not a preference.**
+- [ADR-0002: Real-time transport — SSE](./adr/ADR-0002-realtime-transport-sse.md) —
+  alerts (a mayday) are delivered live over Server-Sent Events, an open web standard, with
+  the event separated from its transport so nothing proprietary sits on the alert path.
+  Scaffolded in `apps/api/src/events/`; the radio-seam mayday publishes to it.
 
 ## The two load-bearing ideas
 

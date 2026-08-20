@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { IncidentsService } from '../incidents/incidents.service';
+import { EventPublisher } from '../events/event-publisher';
 import { RosterService } from './roster';
 import { CorrelationService } from './correlation';
 import {
@@ -68,6 +69,7 @@ export class CommsService {
     private readonly incidents: IncidentsService,
     private readonly roster: RosterService,
     private readonly correlation: CorrelationService,
+    private readonly events: EventPublisher,
   ) {}
 
   private now(): string {
@@ -100,6 +102,19 @@ export class CommsService {
         this.log.error(
           `MAYDAY from unit ${e.unit.id} on talkgroup ${e.talkgroup.id} could not be correlated — stored UNASSIGNED and surfaced.`,
         );
+        // Publish as an ops-level (unattributed) event so a global subscriber still alerts.
+        this.events.publish({
+          type: 'mayday.unassigned',
+          departmentId: '',
+          priority: 'critical',
+          payload: {
+            eventId: e.event_id,
+            radioUnitId: e.unit.id,
+            talkgroupId: e.talkgroup.id,
+            occurredAt: e.timestamp,
+            clockSynced: e.clock_synced ?? null,
+          },
+        });
       }
       return {
         accepted: true,
@@ -121,6 +136,26 @@ export class CommsService {
     facet.lastEventAt = e.timestamp;
     rec.comms = facet;
     this.incidents.touch(rec.id, rec.departmentId);
+
+    if (isMayday) {
+      // Publish to the real-time stream (ADR-0002) so connected interfaces alert now.
+      const m = facet.maydays[facet.maydays.length - 1];
+      this.events.publish({
+        type: 'mayday.declared',
+        departmentId: rec.departmentId,
+        incidentId: rec.id,
+        priority: 'critical',
+        payload: {
+          eventId: m.eventId,
+          radioUnitId: m.unit.radioUnitId,
+          unitDisplayName: m.unit.displayName ?? null,
+          unitResolved: m.unit.resolved,
+          talkgroupId: m.talkgroupId,
+          occurredAt: m.occurredAt,
+          clockSynced: m.clockSynced ?? null,
+        },
+      });
+    }
 
     return {
       accepted: true,

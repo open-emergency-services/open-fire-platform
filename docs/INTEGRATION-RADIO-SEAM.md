@@ -166,9 +166,16 @@ Ingestion pipeline (`comms.service.ts`): `validate → dedupe(event_id) → gap-
 and stores anything still unresolved as an unassigned event — never dropped. The seam's
 HTTP entry point is `POST /comms/radio-events` (`comms.controller.ts`).
 
-Tested end-to-end in `comms.service.spec.ts` (8 cases): correlation, idempotent replay,
-event-close, silence-timeout auto-close, mayday recording, never-drop of an uncorrelated
-mayday, malformed-envelope rejection, and unit-assignment fallback.
+A recorded mayday is also **published to the real-time stream** (ADR-0002): the
+correlated case emits a critical `mayday.declared` domain event (with incident + department
+scope), and an uncorrelated one emits an ops-level `mayday.unassigned` — so a connected
+interface alerts the instant it happens, over open-standard SSE, with no proprietary
+dependency on the alert path.
+
+Tested end-to-end in `comms.service.spec.ts` (9 cases): correlation, idempotent replay,
+event-close, silence-timeout auto-close, mayday recording, mayday published to the live
+stream, never-drop of an uncorrelated mayday, malformed-envelope rejection, and
+unit-assignment fallback.
 
 Still to wire (Wave-0 → 1): the durable-stream transport (NATS JetStream / Redis stream)
 alongside the working HTTP path, Postgres-backed storage, and driving correlation from

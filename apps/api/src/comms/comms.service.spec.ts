@@ -7,6 +7,9 @@ import { CorrelationService } from './correlation';
 import { CommsService } from './comms.service';
 import { RadioSystemId, talkgroupKey } from './radio-event';
 import { IncidentCommsFacet } from './comms-facet';
+import { EventPublisher } from '../events/event-publisher';
+import { DomainEvent } from '../events/domain-event';
+import { firstValueFrom } from 'rxjs';
 
 const sys: RadioSystemId = { wacn: 'BEE00', system_id: 'ABC', rfss_id: '01' };
 const t0 = Date.parse('2026-08-20T20:00:00.000Z');
@@ -21,6 +24,7 @@ describe('CommsService (radio seam)', () => {
   let incidents: IncidentsService;
   let roster: RosterService;
   let correlation: CorrelationService;
+  let events: EventPublisher;
   let comms: CommsService;
   let incidentId: string;
   let seq = 0;
@@ -47,7 +51,8 @@ describe('CommsService (radio seam)', () => {
     incidents = new IncidentsService(new NerisGateway());
     roster = new RosterService();
     correlation = new CorrelationService();
-    comms = new CommsService(incidents, roster, correlation);
+    events = new EventPublisher();
+    comms = new CommsService(incidents, roster, correlation, events);
 
     const inc = incidents.create('DEMO_DEPT', 'INT-1', {});
     incidentId = inc.id;
@@ -100,6 +105,18 @@ describe('CommsService (radio seam)', () => {
     expect(facet().hasActiveMayday).toBe(true);
     expect(facet().maydays).toHaveLength(1);
     expect(facet().maydays[0].unit.displayName).toBe('Engine 12');
+  });
+
+  it('publishes a critical mayday.declared event to the real-time stream', async () => {
+    const next = firstValueFrom(events.live()); // subscribe before publishing
+    comms.ingest(event(iso(t0 + 41000), { event_type: 'emergency', emergency: true }));
+    const evt: DomainEvent = await next;
+    expect(evt.type).toBe('mayday.declared');
+    expect(evt.priority).toBe('critical');
+    expect(evt.departmentId).toBe('DEMO_DEPT');
+    expect(evt.incidentId).toBe(incidentId);
+    expect(evt.id).toBeGreaterThan(0); // monotonic id = SSE Last-Event-ID cursor
+    expect(events.since(0).some((e) => e.type === 'mayday.declared')).toBe(true); // buffered for replay
   });
 
   it('never drops an uncorrelated event; an unbound mayday is stored unassigned', () => {

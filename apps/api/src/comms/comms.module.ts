@@ -4,15 +4,17 @@ import { CommsService } from './comms.service';
 import { RosterService } from './roster';
 import { CorrelationService } from './correlation';
 import { IncidentsModule } from '../incidents/incidents.module';
+import { EventsModule } from '../events/events.module';
 
 /**
  * The comms facet / radio-events seam. Depends on IncidentsModule so it can fold
- * radio traffic onto the correct incident record. Correlation and roster are
- * providers here; a full build backs the roster with personnel/apparatus tables
- * and drives correlation from the CAD feed.
+ * radio traffic onto the correct incident record, and on EventsModule so a mayday
+ * is published to the real-time (SSE) stream. Correlation and roster are providers
+ * here; a full build backs the roster with personnel/apparatus tables and drives
+ * correlation from the CAD feed.
  */
 @Module({
-  imports: [IncidentsModule],
+  imports: [IncidentsModule, EventsModule],
   controllers: [CommsController],
   providers: [CommsService, RosterService, CorrelationService],
   exports: [CommsService, RosterService, CorrelationService],
