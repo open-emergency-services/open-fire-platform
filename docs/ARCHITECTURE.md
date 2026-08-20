@@ -18,7 +18,9 @@ apps/api                  ← NestJS API
 
 `docker compose up --build`, then open http://localhost:8080 — a virtual system plays
 synthetic radio traffic (including a mayday) through the whole chain to a live interface.
-Full walkthrough: [DEMO.md](./DEMO.md).
+Run it: [DEMO.md](./DEMO.md). How it fits together (diagrams): [VIRTUAL-SYSTEM.md](./VIRTUAL-SYSTEM.md).
+Making the rig swap fake parts for real ones (incl. a real radio):
+[ADR-0003](./adr/ADR-0003-swappable-component-rig.md).
 
 ## Design decisions (ADRs)
 
@@ -30,6 +32,10 @@ Full walkthrough: [DEMO.md](./DEMO.md).
   alerts (a mayday) are delivered live over Server-Sent Events, an open web standard, with
   the event separated from its transport so nothing proprietary sits on the alert path.
   Scaffolded in `apps/api/src/events/`; the radio-seam mayday publishes to it.
+- [ADR-0003: Swappable-component rig](./adr/ADR-0003-swappable-component-rig.md)
+  *(proposed)* — make the compose demo a rig of HTTP-boundary "slots" so any fake part
+  (radio source, storage, interface) can be replaced by a real one — including plugging in
+  a real radio via open-p25-console or an SDR bridge — with no core changes.
 
 ## The two load-bearing ideas
 
