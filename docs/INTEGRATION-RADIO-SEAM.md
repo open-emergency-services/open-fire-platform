@@ -1,10 +1,11 @@
 # Planned seam: radio events → incident record
 
-*Status: agreed to design toward, pre-code. Not built yet. This records the one
-integration seam between `open-fire-platform` (records) and `open-p25-console`
-(radio), so both projects design toward the same interface instead of retrofitting
-one later. Source of the agreement: the console's "Radio → Platform integration
-brief" and this platform's reply.*
+*Status: **envelope frozen at schema_version 1.0**; agreed to design toward, pre-code.
+Not built yet. This records the one integration seam between `open-fire-platform`
+(records) and `open-p25-console` (radio), so both projects hold the same contract
+instead of retrofitting one later. Source: the console's "Radio → Platform integration
+brief" and the two-round reply exchange that froze the envelope. The console repo's
+`docs/integration.md` holds the identical contract.*
 
 ## The seam, in one sentence
 
@@ -85,41 +86,70 @@ at time t maps to the incident currently bound to T. Fallbacks, in order:
 retry until acked; we are idempotent on `event_id`, so duplicates are a non-event and
 a lost mayday is unacceptable. Preferred transport is a durable stream (NATS JetStream
 or a Redis stream) with an HTTP-webhook-with-retry fallback for small deployments.
+**Order and detect gaps by `(session_id, seq)` — never by `timestamp`** (millisecond
+ties are possible and a clock can step). A new `session_id` means the console
+restarted; the gap detector resets its expectation on it rather than alarming.
 
-## Event envelope (shared, versioned)
+## Event envelope — FROZEN at schema_version 1.0
 
-Transport-agnostic JSON. Console's strawman, plus the two additions we requested
-(`schema_version`, `seq`):
+Transport-agnostic JSON. This is the frozen contract; the console repo holds the
+identical one. Envelope changes require bumping `schema_version` (that's what it's for).
 
 ```json
 {
-  "schema_version": "1",
-  "event_type": "ptt_start",
-  "event_id": "uuid",
-  "seq": 1042,
+  "schema_version": "1.0",
+  "event_type": "ptt_start | ptt_end | emergency | unit_registration | unit_deregistration | talkgroup_affiliation | call_grant | call_end",
+  "event_id": "uuid-v4 — global idempotency key",
+  "session_id": "uuid-v4 — one per console emitter run",
+  "seq": 42,
   "timestamp": "2026-08-20T20:31:04.512Z",
   "source": "open-p25-console",
-  "radio_system": { "wacn": "BEE00", "system_id": "ABC", "rfss_id": "1" },
-  "unit":       { "id": "1234567", "alias": "optional" },
-  "talkgroup":  { "id": "101", "alias": "optional" },
+  "clock_synced": true,
+  "radio_system": { "wacn": "BEE00", "system_id": "ABC", "rfss_id": "01" },
+  "unit":       { "id": "1234567", "alias": null },
+  "talkgroup":  { "id": "101", "alias": null },
   "emergency":  false,
   "encrypted":  true,
-  "call_id":    "correlates ptt_start/ptt_end within one call"
+  "call_id":    "uuid — present on ptt_*/call_* events, null otherwise"
 }
 ```
 
-- `schema_version` — lets either side evolve the envelope without breaking the other.
-- `seq` — monotonic per `source` (per session); lets us detect dropped events / gaps.
-  Resets on console restart; `event_id` stays the global idempotency key.
-- A distinct `event_type: "emergency"` carries the mayday *event*; the `emergency`
-  boolean on `ptt_*` / `call_*` events flags emergency-mode traffic. We alert on the
-  event and flag the surrounding traffic.
-- Clock: the console `timestamp` is authoritative for when the event happened; we
-  also record our receipt time. NTP-sync recommended for legally-significant maydays.
+**Representation locks (agreed — the platform holds these):**
+
+- **IDs are opaque strings; never JSON numbers.** `wacn` / `system_id` / `rfss_id` are
+  uppercase **hex** strings; `unit.id` / `talkgroup.id` are **decimal** strings. The
+  platform **stores and matches them as opaque strings** — it never parses, does
+  arithmetic on, or re-bases any ID, so the hex/decimal split can't cause a mismatch.
+- **`schema_version`** — lets either side evolve the envelope without breaking the other.
+- **`session_id` + `seq`** — `seq` is monotonic within a `session_id` (starts at 1);
+  `event_id` stays the global idempotency key. Order/gap-detect by `(session_id, seq)`.
+- **`clock_synced`** — nullable: `true`/`false` when the console knows whether its clock
+  was NTP-disciplined, `null`/absent when it doesn't. Never required; stored with a
+  mayday record for evidentiary weight. Console `timestamp` is authoritative for *when*;
+  the platform also records receipt time.
+- **`encrypted`** — pure traffic metadata: "the call was in protected/secure mode."
+  Says nothing about keys; implies no decryption. Surfaced as a badge, nothing more.
+- **`emergency`** — a distinct `event_type: "emergency"` carries the mayday *event*; the
+  `emergency` boolean on `ptt_*` / `call_*` flags emergency-mode traffic. Alert on the
+  event, flag the surrounding traffic.
+- **Field presence** — `unit.alias` / `talkgroup.alias` are nullable optional hints
+  (roster wins, always); `call_id` present on `ptt_*` / `call_*`, absent/null on
+  registration events; everything else always present. Alias-absent and call_id-absent
+  are normal, never a parse error.
 
 Event types the console can produce, by incident-record value: `emergency` (highest;
 mayday), `ptt_start`/`ptt_end` (traffic timeline), `unit_registration`/
 `unit_deregistration` (presence), `talkgroup_affiliation`, `call_grant`/`call_end`.
+
+## Timeline is drop-tolerant (best-effort ends)
+
+A radio can drop mid-transmission (out of range, dead battery, RF loss), so a `ptt_end`
+(or `call_end`) may never arrive. The comms-facet timeline **tolerates a `ptt_start` /
+`call_grant` with no matching end**: each open transmission carries the platform's own
+silence/timeout heuristic and **auto-closes, marked *closed-by-timeout* rather than
+*closed-by-event*** — so a dropped radio never leaves a channel "open" forever and the
+record shows why it closed. The console emits a synthesized end on silence where it can;
+when that arrives it simply supersedes the heuristic close.
 
 ## What this means for platform work now
 
