@@ -155,6 +155,26 @@ export class CommsService {
           clockSynced: m.clockSynced ?? null,
         },
       });
+    } else {
+      // Publish non-mayday radio traffic at 'info' so an interface can render the
+      // live open-mic / close-mic timeline over the same SSE stream (ADR-0002).
+      const u = this.roster.resolve(e.radio_system, e.unit);
+      this.events.publish({
+        type: 'radio.event',
+        departmentId: rec.departmentId,
+        incidentId: rec.id,
+        priority: 'info',
+        payload: {
+          eventType: e.event_type,
+          radioUnitId: e.unit.id,
+          unitDisplayName: u.displayName ?? null,
+          talkgroupId: e.talkgroup.id,
+          callId: e.call_id ?? null,
+          emergency: e.emergency,
+          encrypted: e.encrypted,
+          at: e.timestamp,
+        },
+      });
     }
 
     return {

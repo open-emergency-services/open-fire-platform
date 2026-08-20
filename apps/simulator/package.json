@@ -1,0 +1,12 @@
+{
+  "name": "@ofp/simulator",
+  "version": "0.1.0",
+  "description": "Virtual-system event injector — plays scenarios into the OFP API as the console + CAD would",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node run.mjs",
+    "list": "node run.mjs --scenario list"
+  }
+}

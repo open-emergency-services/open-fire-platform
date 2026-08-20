@@ -14,6 +14,12 @@ apps/api                  ← NestJS API
   incidents/              ← local system-of-record + submission state machine
 ```
 
+## See it run
+
+`docker compose up --build`, then open http://localhost:8080 — a virtual system plays
+synthetic radio traffic (including a mayday) through the whole chain to a live interface.
+Full walkthrough: [DEMO.md](./DEMO.md).
+
 ## Design decisions (ADRs)
 
 - [ADR-0001: API-first, headless core](./adr/ADR-0001-api-first-headless-core.md) —

@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { CommsService } from './comms.service';
 import { CorrelationService, IncidentRef } from './correlation';
+import { RosterService } from './roster';
 import { RadioSystemId, talkgroupKey, unitKey } from './radio-event';
 
 /**
@@ -20,6 +21,7 @@ export class CommsController {
   constructor(
     private readonly comms: CommsService,
     private readonly correlation: CorrelationService,
+    private readonly roster: RosterService,
   ) {}
 
   /** Ingest one radio event. Idempotent on event_id; always returns an ack result. */
@@ -46,6 +48,20 @@ export class CommsController {
     const key = unitKey(body.radio_system, { id: body.unitId });
     this.correlation.assignUnit(key, { incidentId: body.incidentId, departmentId: body.departmentId }, new Date().toISOString());
     return { ok: true, key };
+  }
+
+  /** Seed a roster mapping: raw P25 unit id → person/apparatus (a real roster syncs these). */
+  @Post('roster')
+  seedRoster(
+    @Body()
+    body: { radio_system: RadioSystemId; unitId: string; personId?: string; apparatusId?: string; displayName?: string },
+  ) {
+    this.roster.upsert(body.radio_system, body.unitId, {
+      personId: body.personId,
+      apparatusId: body.apparatusId,
+      displayName: body.displayName,
+    });
+    return { ok: true };
   }
 
   /** Radio events that couldn't be correlated to an incident (never dropped). */

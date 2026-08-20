@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Open Fire Platform — Live Incident View</title>
+<style>
+  :root {
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c2230; --line:#2a3140;
+    --text:#e6edf3; --muted:#8b98a9; --accent:#4aa3ff; --ok:#3fb950;
+    --warn:#d29922; --mayday:#ff3b30; --open:#58a6ff;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+         background:var(--bg); color:var(--text); }
+  header { display:flex; align-items:center; gap:12px; padding:10px 16px;
+           background:var(--panel); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:5; }
+  header h1 { font-size:15px; margin:0; font-weight:600; letter-spacing:.2px; }
+  .spacer { flex:1; }
+  .status { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; }
+  .dot { width:9px; height:9px; border-radius:50%; background:var(--warn); box-shadow:0 0 8px currentColor; }
+  .dot.ok { background:var(--ok); } .dot.down { background:var(--mayday); }
+  .api { color:var(--muted); font-size:11px; font-family:ui-monospace,monospace; }
+
+  #mayday { display:none; align-items:center; gap:14px; padding:12px 16px; background:var(--mayday);
+            color:#fff; font-weight:700; letter-spacing:.3px; animation:flash 1s steps(2,start) infinite; }
+  #mayday.show { display:flex; }
+  #mayday button { margin-left:auto; background:#fff; color:var(--mayday); border:0; border-radius:6px;
+                   padding:7px 14px; font-weight:700; cursor:pointer; }
+  @keyframes flash { 50% { background:#c1271f; } }
+
+  main { display:grid; grid-template-columns: 1.4fr 1fr; gap:14px; padding:14px; max-width:1200px; margin:0 auto; }
+  @media (max-width:820px){ main { grid-template-columns:1fr; } }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0 0 8px; }
+
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:12px; }
+  .card.mayday { border-color:var(--mayday); box-shadow:0 0 0 1px var(--mayday) inset; }
+  .card .top { display:flex; align-items:baseline; gap:8px; }
+  .card .addr { font-weight:600; }
+  .card .type { color:var(--muted); font-size:12px; }
+  .badge { font-size:11px; padding:2px 7px; border-radius:20px; border:1px solid var(--line); color:var(--muted); }
+  .badge.status { border-color:var(--accent); color:var(--accent); }
+  .badge.mayday { background:var(--mayday); color:#fff; border-color:var(--mayday); }
+  .meta { color:var(--muted); font-size:12px; margin-top:2px; }
+
+  .tx { margin-top:10px; border-top:1px solid var(--line); padding-top:8px; }
+  .tx-row { display:flex; gap:8px; align-items:center; padding:3px 0; font-size:13px; }
+  .tx-row .u { min-width:150px; font-weight:500; }
+  .tx-row .t { color:var(--muted); font-family:ui-monospace,monospace; font-size:12px; }
+  .pill { font-size:10px; padding:1px 6px; border-radius:10px; }
+  .pill.open { background:rgba(88,166,255,.15); color:var(--open); }
+  .pill.event { background:rgba(63,185,80,.12); color:var(--ok); }
+  .pill.timeout { background:rgba(210,153,34,.15); color:var(--warn); }
+
+  #feed { max-height:70vh; overflow:auto; }
+  .fe { display:flex; gap:8px; padding:6px 0; border-bottom:1px solid var(--line); font-size:13px; }
+  .fe .clk { color:var(--muted); font-family:ui-monospace,monospace; font-size:11px; min-width:64px; }
+  .fe .k { min-width:118px; }
+  .fe.may { color:#ff8a80; font-weight:600; }
+  .empty { color:var(--muted); font-size:13px; padding:8px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🔥 Open Fire Platform — Live Incident View</h1>
+  <span class="badge">virtual system</span>
+  <div class="spacer"></div>
+  <div class="status"><span class="dot" id="dot"></span><span id="statusText">connecting…</span></div>
+  <span class="api" id="apiLabel"></span>
+</header>
+
+<div id="mayday">
+  <span>‼ MAYDAY</span><span id="maydayText"></span>
+  <button onclick="clearMayday()">Acknowledge</button>
+</div>
+
+<main>
+  <section>
+    <h2>Active incidents</h2>
+    <div id="incidents"><div class="empty">Waiting for dispatch…</div></div>
+  </section>
+  <section>
+    <h2>Live radio traffic</h2>
+    <div id="feed"><div class="empty">No traffic yet.</div></div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var API = params.get('api') || 'http://localhost:3000/api/v1';
+  document.getElementById('apiLabel').textContent = API;
+
+  var incidents = {};   // id -> { record, tx: { callId -> row } }
+  var feedEmpty = true;
+
+  function el(id){ return document.getElementById(id); }
+  function fmtClock(iso){ try { return new Date(iso).toLocaleTimeString(); } catch(e){ return iso; } }
+
+  function setStatus(state){
+    var dot = el('dot'), t = el('statusText');
+    dot.className = 'dot ' + (state==='ok'?'ok':state==='down'?'down':'');
+    t.textContent = state==='ok'?'live':state==='down'?'disconnected':'connecting…';
+  }
+
+  // ---- initial snapshot (immediate display; does not depend on the stream) ----
+  function loadSnapshot(){
+    fetch(API + '/incidents').then(function(r){ return r.json(); }).then(function(list){
+      (list||[]).forEach(function(rec){ seedIncident(rec); });
+      renderIncidents();
+    }).catch(function(){ /* stream will still populate */ });
+  }
+
+  function seedIncident(rec){
+    var entry = incidents[rec.id] || { record: rec, tx: {} };
+    entry.record = rec;
+    var facet = rec.comms;
+    if (facet && facet.transmissions){
+      facet.transmissions.forEach(function(t){
+        entry.tx[t.callId] = {
+          unit: (t.unit && (t.unit.displayName || t.unit.radioUnitId)) || '—',
+          tg: t.talkgroupId, started: t.startedAt, ended: t.endedAt, closedBy: t.closedBy
+        };
+      });
+    }
+    if (facet && facet.hasActiveMayday) entry.mayday = true;
+    incidents[rec.id] = entry;
+  }
+
+  function renderIncidents(){
+    var box = el('incidents');
+    var ids = Object.keys(incidents);
+    if (!ids.length){ box.innerHTML = '<div class="empty">Waiting for dispatch…</div>'; return; }
+    box.innerHTML = '';
+    ids.forEach(function(id){
+      var e = incidents[id], rec = e.record || {};
+      var data = rec.data || {};
+      var card = document.createElement('div');
+      card.className = 'card' + (e.mayday ? ' mayday' : '');
+      var head = '<div class="top"><span class="addr">'+ (data.address||'Unknown location') +'</span>'+
+                 '<span class="type">'+ (data.incident_type||'') +'</span>'+
+                 '<span class="spacer"></span>'+
+                 (e.mayday?'<span class="badge mayday">MAYDAY</span>':'')+
+                 '<span class="badge status">'+ (rec.status||'draft') +'</span></div>'+
+                 '<div class="meta">'+ (rec.internalId||id) +'</div>';
+      var rows = Object.keys(e.tx).map(function(cid){
+        var t = e.tx[cid];
+        var state = !t.ended ? '<span class="pill open">on air</span>'
+                    : t.closedBy==='timeout' ? '<span class="pill timeout">timed out</span>'
+                    : '<span class="pill event">clear</span>';
+        var span = fmtClock(t.started) + (t.ended ? ' → ' + fmtClock(t.ended) : ' → …');
+        return '<div class="tx-row"><span class="u">'+ t.unit +'</span>'+ state +
+               '<span class="spacer"></span><span class="t">tg '+ t.tg +' · '+ span +'</span></div>';
+      }).join('');
+      card.innerHTML = head + (rows ? '<div class="tx">'+rows+'</div>' : '');
+      box.appendChild(card);
+    });
+  }
+
+  function pushFeed(html, isMay){
+    var feed = el('feed');
+    if (feedEmpty){ feed.innerHTML=''; feedEmpty=false; }
+    var row = document.createElement('div');
+    row.className = 'fe' + (isMay?' may':'');
+    row.innerHTML = html;
+    feed.insertBefore(row, feed.firstChild);
+    while (feed.children.length > 200) feed.removeChild(feed.lastChild);
+  }
+
+  // ---- live stream (SSE) ----
+  function onRadio(evt){
+    var p = evt.payload || {};
+    var e = incidents[evt.incidentId];
+    if (e){
+      if (p.callId && (p.eventType==='ptt_start' || p.eventType==='call_grant')){
+        e.tx[p.callId] = { unit: p.unitDisplayName || p.radioUnitId, tg: p.talkgroupId, started: p.at };
+      } else if (p.callId && (p.eventType==='ptt_end' || p.eventType==='call_end') && e.tx[p.callId]){
+        e.tx[p.callId].ended = p.at; e.tx[p.callId].closedBy = 'event';
+      }
+      renderIncidents();
+    }
+    pushFeed('<span class="clk">'+ fmtClock(p.at||evt.at) +'</span>'+
+             '<span class="k">'+ (p.eventType||'event') +'</span>'+
+             '<span>'+ (p.unitDisplayName||p.radioUnitId||'') +' · tg '+ (p.talkgroupId||'') +'</span>', false);
+  }
+
+  function onMayday(evt){
+    var p = evt.payload || {};
+    if (evt.incidentId && incidents[evt.incidentId]){ incidents[evt.incidentId].mayday = true; renderIncidents(); }
+    el('maydayText').textContent = 'Unit ' + (p.unitDisplayName || p.radioUnitId || '?') +
+        ' · talkgroup ' + (p.talkgroupId||'?') + ' · ' + fmtClock(p.occurredAt || evt.at);
+    el('mayday').classList.add('show');
+    beep();
+    pushFeed('<span class="clk">'+ fmtClock(p.occurredAt||evt.at) +'</span>'+
+             '<span class="k">‼ MAYDAY</span><span>'+ (p.unitDisplayName||p.radioUnitId||'') +
+             ' · tg '+ (p.talkgroupId||'') +'</span>', true);
+  }
+
+  function connect(){
+    var es;
+    try { es = new EventSource(API + '/alerts/stream'); }
+    catch (e) { setStatus('down'); return; }
+    es.onopen = function(){ setStatus('ok'); };
+    es.onerror = function(){ setStatus('down'); /* EventSource auto-reconnects */ };
+    es.addEventListener('radio.event', function(m){ try { onRadio(JSON.parse(m.data)); } catch(e){} });
+    es.addEventListener('mayday.declared', function(m){ try { onMayday(JSON.parse(m.data)); } catch(e){} });
+    es.addEventListener('mayday.unassigned', function(m){ try { onMayday(JSON.parse(m.data)); } catch(e){} });
+    es.addEventListener('ping', function(){ /* heartbeat keeps the connection warm */ });
+  }
+
+  // small audible alert for a mayday (no asset dependency)
+  var actx;
+  function beep(){
+    try {
+      actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+      var o = actx.createOscillator(), g = actx.createGain();
+      o.type='square'; o.frequency.value=880; o.connect(g); g.connect(actx.destination);
+      g.gain.setValueAtTime(0.15, actx.currentTime); o.start();
+      o.stop(actx.currentTime + 0.5);
+    } catch(e){}
+  }
+  window.clearMayday = function(){
+    el('mayday').classList.remove('show');
+    // A real deployment POSTs an acknowledgement here; the mayday record persists regardless.
+  };
+
+  setStatus('');
+  loadSnapshot();
+  connect();
+  // Light periodic snapshot reconcile as a backstop (the stream is the live path).
+  setInterval(loadSnapshot, 30000);
+})();
+</script>
+</body>
+</html>

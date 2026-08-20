@@ -34,5 +34,30 @@ services:
       db:
         condition: service_healthy
 
+  # The main interface (V1): a static live incident view. Open http://localhost:8080
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+  # The virtual system's event source: plays scenarios into the API as the
+  # open-p25-console + CAD would, so the whole chain runs with realistic data.
+  # Override the scenario/speed with env, e.g. OFP_SCENARIO=ems-call.
+  simulator:
+    build:
+      context: .
+      dockerfile: apps/simulator/Dockerfile
+    environment:
+      OFP_API: http://api:3000/api/v1
+      OFP_SCENARIO: ${OFP_SCENARIO:-structure-fire}
+      OFP_SPEED: ${OFP_SPEED:-1}
+      OFP_LOOP: ${OFP_LOOP:-1}
+    depends_on:
+      - api
+
 volumes:
   ofp_db:
