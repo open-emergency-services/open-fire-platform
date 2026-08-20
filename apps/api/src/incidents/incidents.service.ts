@@ -33,6 +33,16 @@ export class IncidentsService {
     return rec;
   }
 
+  /**
+   * Bump updatedAt after an out-of-band mutation of the stored record (e.g. the
+   * comms facet gaining a radio event). The record object is the same reference
+   * held in the repo, so the mutation is already persisted; this just timestamps it.
+   */
+  touch(id: string, departmentId: string): void {
+    const rec = this.get(departmentId, id);
+    rec.updatedAt = this.now();
+  }
+
   create(departmentId: string, internalId: string, data: Record<string, unknown>): IncidentRecord {
     const ts = this.now();
     const rec: IncidentRecord = {

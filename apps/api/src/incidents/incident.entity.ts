@@ -1,4 +1,5 @@
 import { IncidentStatus } from './incident-status';
+import { IncidentCommsFacet } from '../comms/comms-facet';
 
 /**
  * Local incident record. `data` holds the NERIS-shaped payload (typed against
@@ -14,6 +15,13 @@ export interface IncidentRecord {
   data: Record<string, unknown>;  // NERIS-shaped incident payload
   validationGaps: string[];       // missing neris_core fields, if any
   nerisResponse?: unknown;        // last response from NERIS (accepted/rejected detail)
+  /**
+   * Radio traffic folded onto this incident from the open-p25-console seam:
+   * transmissions, mayday events, and presence. Populated by CommsService; absent
+   * until the first radio event correlates here. Event metadata only — no audio,
+   * no keys. See /docs/INTEGRATION-RADIO-SEAM.md.
+   */
+  comms?: IncidentCommsFacet;
   createdAt: string;
   updatedAt: string;
 }

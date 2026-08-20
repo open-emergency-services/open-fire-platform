@@ -7,5 +7,6 @@ import { NerisModule } from '../neris/neris.module';
   imports: [NerisModule],
   controllers: [IncidentsController],
   providers: [IncidentsService],
+  exports: [IncidentsService],
 })
 export class IncidentsModule {}

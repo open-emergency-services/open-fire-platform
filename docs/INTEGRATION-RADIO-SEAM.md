@@ -151,14 +151,26 @@ silence/timeout heuristic and **auto-closes, marked *closed-by-timeout* rather t
 record shows why it closed. The console emits a synthesized end on silence where it can;
 when that arrives it simply supersedes the heuristic close.
 
-## What this means for platform work now
+## Platform side — scaffolded (`apps/api/src/comms/`)
 
-Nothing to build yet — but two data-model choices are cheap to bake in early:
+The two data-model choices this seam needed are now built, not just planned:
 
-1. **Give the incident model a `comms` facet** — talkgroup id(s), an ordered list of
-   radio-event references, and mayday events — so radio traffic has a home the moment
-   the console can emit it.
-2. **Treat the roster as the resolver** for radio unit IDs, alongside its existing
-   person/apparatus duties.
+1. **The incident model has a `comms` facet** — bound talkgroup id(s), an ordered
+   transmission timeline, mayday events, and unit presence (`comms-facet.ts`).
+2. **The roster resolves radio unit IDs** to person/apparatus, retaining the raw id
+   (`roster.ts`); resolution never blocks ingestion.
 
-When the console is ready, integration is a small adapter on each side, not a rewrite.
+Ingestion pipeline (`comms.service.ts`): `validate → dedupe(event_id) → gap-track
+(session_id, seq) → correlate → roster.resolve → apply to facet`. Correlation
+(`correlation.ts`) does talkgroup↔incident binding first, unit-assignment as fallback,
+and stores anything still unresolved as an unassigned event — never dropped. The seam's
+HTTP entry point is `POST /comms/radio-events` (`comms.controller.ts`).
+
+Tested end-to-end in `comms.service.spec.ts` (8 cases): correlation, idempotent replay,
+event-close, silence-timeout auto-close, mayday recording, never-drop of an uncorrelated
+mayday, malformed-envelope rejection, and unit-assignment fallback.
+
+Still to wire (Wave-0 → 1): the durable-stream transport (NATS JetStream / Redis stream)
+alongside the working HTTP path, Postgres-backed storage, and driving correlation from
+the live CAD feed instead of the binding endpoints. When the console is ready, the join
+is a small adapter, not a rewrite.
