@@ -14,6 +14,13 @@ apps/api                  ← NestJS API
   incidents/              ← local system-of-record + submission state machine
 ```
 
+## Design decisions (ADRs)
+
+- [ADR-0001: API-first, headless core](./adr/ADR-0001-api-first-headless-core.md) —
+  every capability is exposed only through a versioned API; the interface is a client
+  with no privileged access and no logic. The core can be frozen/abandoned and still
+  function while interfaces evolve independently. **Binding rule, not a preference.**
+
 ## The two load-bearing ideas
 
 1. **Generate from the standard.** `packages/neris-schema/scripts/generate.mjs`
