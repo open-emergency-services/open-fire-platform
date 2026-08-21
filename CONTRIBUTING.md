@@ -41,6 +41,21 @@ curl -s localhost:3000/api/v1/incidents/export
 - Sign your commits (DCO) — `git commit -s`. By contributing, you agree your contributions are licensed under the project's **AGPLv3**.
 - Be kind. See `CODE_OF_CONDUCT.md`.
 
+## Documentation conventions
+
+Any doc that explains how to run or deploy something covers **two setups**, in this order:
+
+1. **Local-only** — the simplest possible way to run it, usually a single container /
+   `docker compose up`. This is what a developer or a curious firefighter uses first.
+2. **Hosting-provider** — how each part is deployed on real infrastructure. Lead with a
+   **generic** version ("deploy the service like this, route to it like this") and add
+   provider-specific notes (Cloudflare, a cloud ALB, etc.) only where they genuinely
+   differ. Don't over-specify one vendor at the expense of the generic path — every
+   provider does it a little differently, so the generic path is the contract and the
+   provider notes are examples.
+
+Keep both honest about what exists today versus what's target architecture.
+
 ## Where help is most needed (Wave 0)
 
 - Postgres-backed incident repository (replace the in-memory Map).
