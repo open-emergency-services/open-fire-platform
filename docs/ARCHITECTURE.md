@@ -53,6 +53,14 @@ Making the rig swap fake parts for real ones (incl. a real radio):
   with no slot; adding a field later is a reprocess, not a re-collection. The map of known
   slots is [DATA-CAPTURE-INVENTORY.md](./DATA-CAPTURE-INVENTORY.md).
 
+## Module catalog (screens to build)
+
+Every kind of record the system can capture — incident documentation, incident analysis,
+community risk reduction (hydrant maintenance, community events, inspections), personnel
+health & safety, and department/master data — organized as the menu of future data-entry
+screens, each mapped to its generated NERIS interface: [MODULE-CATALOG.md](./MODULE-CATALOG.md).
+All schema-ready; screens/endpoints are the backlog.
+
 ## The two load-bearing ideas
 
 1. **Generate from the standard.** `packages/neris-schema/scripts/generate.mjs`
