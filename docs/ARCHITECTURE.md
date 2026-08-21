@@ -52,6 +52,14 @@ Making the rig swap fake parts for real ones (incl. a real radio):
   (typed slots) + **unmapped** (raw keys not yet mapped). Nothing is ever dropped, even data
   with no slot; adding a field later is a reprocess, not a re-collection. The map of known
   slots is [DATA-CAPTURE-INVENTORY.md](./DATA-CAPTURE-INVENTORY.md).
+- [ADR-0007: Edits, corrections, deletes (CRUD semantics)](./adr/ADR-0007-edits-corrections-crud-semantics.md)
+  — an edit is a new event, a delete is a tombstone; the log is never mutated, so the audit
+  trail (who/what/when, old→new) is inherent. Covers editability lifecycle, optimistic
+  concurrency, and lawful PII erasure (crypto-shredding) vs. immutability.
+- [ADR-0008: Isolating the critical path from routine writes](./adr/ADR-0008-critical-path-isolation.md)
+  — a routine write must never delay a mayday. Guaranteed via priority lanes on one Core
+  (reserved critical pool, admission control, shed routine under load) — *priority, not
+  exclusion*; physical split into separate log servers is a capability for scale, not the default.
 
 ## Module catalog (screens to build)
 
