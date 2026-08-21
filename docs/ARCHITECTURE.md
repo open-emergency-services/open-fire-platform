@@ -47,6 +47,11 @@ Making the rig swap fake parts for real ones (incl. a real radio):
   with three stability promises: **Essential** (frozen, life-safety + data-ownership only),
   **Regular** (evolving, production-grade), **Experimental** (unstable, sandboxed, possibly
   per-department). Criticality increases inward; only the Essential ingest writes to the Core.
+- [ADR-0006: Capture-everything ingestion](./adr/ADR-0006-capture-everything-ingestion.md)
+  — every inbound event stored as **raw** (complete, verbatim, lossless) + **normalized**
+  (typed slots) + **unmapped** (raw keys not yet mapped). Nothing is ever dropped, even data
+  with no slot; adding a field later is a reprocess, not a re-collection. The map of known
+  slots is [DATA-CAPTURE-INVENTORY.md](./DATA-CAPTURE-INVENTORY.md).
 
 ## The two load-bearing ideas
 
