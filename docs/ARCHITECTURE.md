@@ -37,10 +37,16 @@ Making the rig swap fake parts for real ones (incl. a real radio):
   (radio source, storage, interface) can be replaced by a real one — including plugging in
   a real radio via open-p25-console or an SDR bridge — with no core changes.
 - [ADR-0004: Recording Core + read model + HA + topology](./adr/ADR-0004-recording-core-read-model-ha-topology.md)
-  *(proposed)* — append-only Core (source of truth) on Postgres, a derived read model built
-  by a projector, the alert path tapping the Core so life-safety is independent of the read
+  — append-only Core (source of truth) on Postgres, a derived read model built by a
+  projector, the alert path tapping the Core so life-safety is independent of the read
   side; Core is HA (RPO 0), the read model recovers fast (hot-standby promote); every
-  component splittable logically/physically from day one (Level 1 floor, Level 2 built in).
+  component splittable logically/physically from day one (Level 1 floor, Level 2 built in);
+  urgent delivery is its own stateless service; everything stateless runs ≥2 behind an
+  LB-agnostic load balancer.
+- [ADR-0005: Tiered APIs](./adr/ADR-0005-tiered-apis.md) — split the API into three tiers
+  with three stability promises: **Essential** (frozen, life-safety + data-ownership only),
+  **Regular** (evolving, production-grade), **Experimental** (unstable, sandboxed, possibly
+  per-department). Criticality increases inward; only the Essential ingest writes to the Core.
 
 ## The two load-bearing ideas
 

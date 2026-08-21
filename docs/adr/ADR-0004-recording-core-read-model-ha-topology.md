@@ -4,7 +4,7 @@
 **Date:** 2026-08-21
 **Deciders:** Maintainer (solo, for now)
 **Refines:** ADR-0001 (API-first, headless core), ADR-0002 (SSE alert transport)
-**Companion (to be written):** ADR-0005 (tiered APIs: essential / regular / experimental)
+**Companion:** [ADR-0005](./ADR-0005-tiered-apis.md) (tiered APIs: essential / regular / experimental)
 
 ## Context
 

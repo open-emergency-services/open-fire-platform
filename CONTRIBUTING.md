@@ -11,6 +11,11 @@ Thanks for helping build free, department-owned software for the fire service.
   formats and supports clean export. No lock-in, ever.
 - **Life-safety mindset.** This software runs in emergencies. Favor correctness,
   tests, and clear failure modes over cleverness.
+- **Respect the API tiers.** New capability lands in the **Regular** (or
+  **Experimental**) tier by default. The **Essential** tier is frozen and tiny — adding to
+  it requires that the thing is life-safety or data-ownership *and* that you're committing
+  to freeze it for years. See [ADR-0005](docs/adr/ADR-0005-tiered-apis.md). Only the
+  Essential ingest writes to the Core (ADR-0004).
 
 ## Getting started
 
