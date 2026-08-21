@@ -1,62 +1,59 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { NERIS_CORE_FIELDS } from '@ofp/neris-schema';
 import { NerisGateway } from '../neris/neris.gateway';
+import { EventStore } from '../core/event-store';
+import { IncidentReadModel } from '../projections/incident-read-model';
+import { Projector } from '../projections/projector';
 import { IncidentRecord } from './incident.entity';
 import { IncidentStatus, assertTransition } from './incident-status';
 
 /**
- * Wave-0 incident service.
+ * Incident service — now event-sourced (ADR-0004/0006).
  *
- * Storage here is an in-memory Map so the scaffold runs with zero infra. Swap
- * `repo` for a Postgres-backed repository (Prisma/Drizzle) — the docker-compose
- * already provisions Postgres. Nothing else in the flow changes.
+ * Writes append to the Core event log (the source of truth); reads come from the
+ * incident read model (a projection the projector builds from the log). `create`
+ * is fully event-sourced. `validate`/`submit` still mutate the projected record
+ * directly for Wave-0 — they'll append `incident.validated` / `incident.submitted`
+ * events in a later slice; the important write paths (create + radio) go through
+ * the log today.
  */
 @Injectable()
 export class IncidentsService {
-  private readonly repo = new Map<string, IncidentRecord>();
-
-  constructor(private readonly neris: NerisGateway) {}
+  constructor(
+    private readonly neris: NerisGateway,
+    private readonly store: EventStore,
+    private readonly readModel: IncidentReadModel,
+    private readonly projector: Projector,
+  ) {}
 
   private now() {
-    // NOTE: real code uses Date.now(); kept explicit for clarity.
     return new Date().toISOString();
   }
 
   list(departmentId: string): IncidentRecord[] {
-    return [...this.repo.values()].filter((i) => i.departmentId === departmentId);
+    return this.readModel.list(departmentId);
   }
 
   get(departmentId: string, id: string): IncidentRecord {
-    const rec = this.repo.get(id);
-    if (!rec || rec.departmentId !== departmentId) throw new NotFoundException('Incident not found');
-    return rec;
+    return this.readModel.getOrThrow(departmentId, id);
   }
 
-  /**
-   * Bump updatedAt after an out-of-band mutation of the stored record (e.g. the
-   * comms facet gaining a radio event). The record object is the same reference
-   * held in the repo, so the mutation is already persisted; this just timestamps it.
-   */
-  touch(id: string, departmentId: string): void {
-    const rec = this.get(departmentId, id);
-    rec.updatedAt = this.now();
-  }
-
-  create(departmentId: string, internalId: string, data: Record<string, unknown>): IncidentRecord {
+  /** Create an incident: append `incident.created` to the Core, then project it. */
+  async create(departmentId: string, internalId: string, data: Record<string, unknown>): Promise<IncidentRecord> {
+    const id = randomUUID();
     const ts = this.now();
-    const rec: IncidentRecord = {
-      id: randomUUID(),
-      departmentId,
-      internalId,
-      status: IncidentStatus.Draft,
-      data,
-      validationGaps: [],
-      createdAt: ts,
-      updatedAt: ts,
-    };
-    this.repo.set(rec.id, rec);
-    return rec;
+    const { event } = await this.store.append({
+      event_id: randomUUID(),
+      source: 'ui',
+      source_type: 'incident.created',
+      occurred_at: ts,
+      raw: { id, departmentId, internalId, data },
+      normalized: { id, departmentId, internalId, data },
+      correlation: { incident_id: id },
+    });
+    this.projector.project(event);
+    return this.readModel.getOrThrow(departmentId, id);
   }
 
   /** Local structural check: which minimal-record fields are still missing. */
@@ -72,7 +69,6 @@ export class IncidentsService {
     const rec = this.get(departmentId, id);
     rec.validationGaps = this.computeGaps(rec.data);
     if (rec.validationGaps.length === 0) {
-      // Authoritative server-side rules (no-op if NERIS disabled).
       await this.neris.validateIncident(entityId, rec.data);
       assertTransition(rec.status, IncidentStatus.Validated);
       rec.status = IncidentStatus.Validated;

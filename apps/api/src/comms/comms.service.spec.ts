@@ -1,30 +1,32 @@
 import 'reflect-metadata';
 import { describe, it, expect, beforeEach } from 'vitest';
+import { firstValueFrom } from 'rxjs';
 import { NerisGateway } from '../neris/neris.gateway';
 import { IncidentsService } from '../incidents/incidents.service';
-import { RosterService } from './roster';
+import { InMemoryEventStore } from '../core/event-store';
+import { IncidentReadModel } from '../projections/incident-read-model';
+import { RosterService } from '../projections/roster';
+import { Projector } from '../projections/projector';
 import { CorrelationService } from './correlation';
 import { CommsService } from './comms.service';
-import { RadioSystemId, talkgroupKey } from './radio-event';
-import { IncidentCommsFacet } from './comms-facet';
 import { EventPublisher } from '../events/event-publisher';
 import { DomainEvent } from '../events/domain-event';
-import { firstValueFrom } from 'rxjs';
+import { RadioSystemId, talkgroupKey } from './radio-event';
+import { IncidentCommsFacet } from './comms-facet';
 
 const sys: RadioSystemId = { wacn: 'BEE00', system_id: 'ABC', rfss_id: '01' };
 const t0 = Date.parse('2026-08-20T20:00:00.000Z');
 const iso = (ms: number) => new Date(ms).toISOString();
 
-/**
- * End-to-end tests for the radio → incident seam: correlation, idempotent
- * at-least-once delivery, the drop-tolerant transmission timeline, mayday
- * recording, and never-drop of uncorrelated events.
- */
-describe('CommsService (radio seam)', () => {
-  let incidents: IncidentsService;
+/** End-to-end tests for the event-sourced radio seam (ingest → Core → projector). */
+describe('CommsService (radio seam, event-sourced)', () => {
+  let store: InMemoryEventStore;
+  let readModel: IncidentReadModel;
   let roster: RosterService;
-  let correlation: CorrelationService;
+  let projector: Projector;
+  let incidents: IncidentsService;
   let events: EventPublisher;
+  let correlation: CorrelationService;
   let comms: CommsService;
   let incidentId: string;
   let seq = 0;
@@ -46,15 +48,18 @@ describe('CommsService (radio seam)', () => {
     ...over,
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     seq = 0;
-    incidents = new IncidentsService(new NerisGateway());
+    store = new InMemoryEventStore();
+    readModel = new IncidentReadModel();
     roster = new RosterService();
-    correlation = new CorrelationService();
+    projector = new Projector(readModel, roster);
+    incidents = new IncidentsService(new NerisGateway(), store, readModel, projector);
     events = new EventPublisher();
-    comms = new CommsService(incidents, roster, correlation, events);
+    correlation = new CorrelationService();
+    comms = new CommsService(store, correlation, events, projector);
 
-    const inc = incidents.create('DEMO_DEPT', 'INT-1', {});
+    const inc = await incidents.create('DEMO_DEPT', 'INT-1', {});
     incidentId = inc.id;
     roster.upsert(sys, '1234567', { apparatusId: 'E12', displayName: 'Engine 12' });
     correlation.bindTalkgroup(
@@ -64,43 +69,42 @@ describe('CommsService (radio seam)', () => {
     );
   });
 
-  it('correlates a ptt_start to the bound incident and resolves the unit', () => {
-    const r = comms.ingest(event(iso(t0 + 1000), { event_type: 'ptt_start', call_id: 'c1' }));
+  it('correlates a ptt_start to the bound incident and resolves the unit', async () => {
+    const r = await comms.ingest(event(iso(t0 + 1000), { event_type: 'ptt_start', call_id: 'c1' }));
     expect(r.accepted).toBe(true);
     expect(r.correlation).toBe('talkgroup');
     expect(r.incidentId).toBe(incidentId);
     const tx = facet().transmissions[0];
     expect(tx.unit.resolved).toBe(true);
     expect(tx.unit.displayName).toBe('Engine 12');
-    expect(tx.unit.radioUnitId).toBe('1234567'); // raw id always retained
+    expect(tx.unit.radioUnitId).toBe('1234567');
   });
 
-  it('is idempotent: re-delivering the same event_id does not double-append', () => {
+  it('is idempotent: re-delivering the same event_id does not double-append', async () => {
     const e = event(iso(t0 + 1000), { event_type: 'ptt_start', call_id: 'c1' });
-    comms.ingest(e);
-    const again = comms.ingest(e);
+    await comms.ingest(e);
+    const again = await comms.ingest(e);
     expect(again.duplicate).toBe(true);
     expect(facet().transmissions.filter((t) => t.callId === 'c1')).toHaveLength(1);
   });
 
-  it('closes a transmission by event when a matching ptt_end arrives', () => {
-    comms.ingest(event(iso(t0 + 1000), { event_type: 'ptt_start', call_id: 'c1' }));
-    comms.ingest(event(iso(t0 + 5000), { event_type: 'ptt_end', call_id: 'c1' }));
+  it('closes a transmission by event when a matching ptt_end arrives', async () => {
+    await comms.ingest(event(iso(t0 + 1000), { event_type: 'ptt_start', call_id: 'c1' }));
+    await comms.ingest(event(iso(t0 + 5000), { event_type: 'ptt_end', call_id: 'c1' }));
     const tx = facet().transmissions.find((t) => t.callId === 'c1')!;
     expect(tx.closedBy).toBe('event');
     expect(tx.endedAt).toBe(iso(t0 + 5000));
   });
 
-  it('auto-closes an unmatched ptt_start on the silence timeout (dropped radio)', () => {
-    comms.ingest(event(iso(t0 + 6000), { event_type: 'ptt_start', call_id: 'c2' }));
-    // A later event >30s after the start triggers the opportunistic sweep.
-    comms.ingest(event(iso(t0 + 40000), { event_type: 'talkgroup_affiliation' }));
+  it('auto-closes an unmatched ptt_start on the silence timeout (dropped radio)', async () => {
+    await comms.ingest(event(iso(t0 + 6000), { event_type: 'ptt_start', call_id: 'c2' }));
+    await comms.ingest(event(iso(t0 + 40000), { event_type: 'talkgroup_affiliation' }));
     const tx = facet().transmissions.find((t) => t.callId === 'c2')!;
     expect(tx.closedBy).toBe('timeout');
   });
 
-  it('records a mayday and raises the active flag', () => {
-    const r = comms.ingest(event(iso(t0 + 41000), { event_type: 'emergency', emergency: true }));
+  it('records a mayday and raises the active flag', async () => {
+    const r = await comms.ingest(event(iso(t0 + 41000), { event_type: 'emergency', emergency: true }));
     expect(r.mayday).toBe(true);
     expect(facet().hasActiveMayday).toBe(true);
     expect(facet().maydays).toHaveLength(1);
@@ -108,19 +112,19 @@ describe('CommsService (radio seam)', () => {
   });
 
   it('publishes a critical mayday.declared event to the real-time stream', async () => {
-    const next = firstValueFrom(events.live()); // subscribe before publishing
-    comms.ingest(event(iso(t0 + 41000), { event_type: 'emergency', emergency: true }));
+    const next = firstValueFrom(events.live());
+    await comms.ingest(event(iso(t0 + 41000), { event_type: 'emergency', emergency: true }));
     const evt: DomainEvent = await next;
     expect(evt.type).toBe('mayday.declared');
     expect(evt.priority).toBe('critical');
     expect(evt.departmentId).toBe('DEMO_DEPT');
     expect(evt.incidentId).toBe(incidentId);
-    expect(evt.id).toBeGreaterThan(0); // monotonic id = SSE Last-Event-ID cursor
-    expect(events.since(0).some((e) => e.type === 'mayday.declared')).toBe(true); // buffered for replay
+    expect(evt.id).toBeGreaterThan(0);
+    expect(events.since(0).some((e) => e.type === 'mayday.declared')).toBe(true);
   });
 
-  it('never drops an uncorrelated event; an unbound mayday is stored unassigned', () => {
-    const r = comms.ingest(
+  it('never drops an uncorrelated event; an unbound mayday is stored unassigned', async () => {
+    const r = await comms.ingest(
       event(iso(t0 + 42000), {
         event_type: 'emergency',
         emergency: true,
@@ -129,27 +133,41 @@ describe('CommsService (radio seam)', () => {
     );
     expect(r.correlation).toBe('unresolved');
     expect(r.mayday).toBe(true);
-    expect(comms.listUnassigned()).toHaveLength(1);
+    expect(await comms.listUnassigned()).toHaveLength(1);
   });
 
-  it('rejects a malformed envelope with problems and no crash', () => {
-    const r = comms.ingest({ schema_version: '0.9', event_type: 'nope' });
+  it('rejects a malformed envelope with problems and no crash', async () => {
+    const r = await comms.ingest({ schema_version: '0.9', event_type: 'nope' });
     expect(r.accepted).toBe(false);
     expect(r.problems.length).toBeGreaterThan(0);
   });
 
-  it('falls back to unit-assignment correlation when no talkgroup is bound', () => {
-    const inc2 = incidents.create('DEMO_DEPT', 'INT-2', {});
+  it('falls back to unit-assignment correlation when no talkgroup is bound', async () => {
+    const inc2 = await incidents.create('DEMO_DEPT', 'INT-2', {});
     correlation.assignUnit(
       `${sys.wacn}:${sys.system_id}:${sys.rfss_id}:1234567`,
       { incidentId: inc2.id, departmentId: 'DEMO_DEPT' },
       iso(t0),
     );
-    // Use a talkgroup that is NOT bound, so correlation must fall through to the unit.
-    const r = comms.ingest(
+    const r = await comms.ingest(
       event(iso(t0 + 1000), { event_type: 'ptt_start', call_id: 'cX', talkgroup: { id: '555', alias: null } }),
     );
     expect(r.correlation).toBe('unit-assignment');
     expect(r.incidentId).toBe(inc2.id);
+  });
+
+  it('REBUILD: replaying the whole log reconstructs identical incident + comms state', async () => {
+    await comms.ingest(event(iso(t0 + 1000), { event_type: 'ptt_start', call_id: 'c1' }));
+    await comms.ingest(event(iso(t0 + 5000), { event_type: 'ptt_end', call_id: 'c1' }));
+    await comms.ingest(event(iso(t0 + 41000), { event_type: 'emergency', emergency: true }));
+
+    const before = JSON.stringify(incidents.get('DEMO_DEPT', incidentId));
+
+    // Wipe the read model and rebuild purely from the Core log.
+    projector.rebuild(await store.all());
+
+    const after = JSON.stringify(incidents.get('DEMO_DEPT', incidentId));
+    expect(after).toBe(before); // the read model is fully derivable from the log
+    expect(incidents.get('DEMO_DEPT', incidentId).comms!.maydays).toHaveLength(1);
   });
 });

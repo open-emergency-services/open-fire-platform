@@ -109,12 +109,12 @@ something new.
        — `stored-event.ts`, `event-store.ts` (in-memory), `pg-event-store.ts`, and the
        `migrations/0001_event_log.sql` DDL.)*
 2. [~] Make every adapter lossless: map → `normalized`, pass through → `raw`, diff →
-       `unmapped`. *(Mechanism + proof done: `losslessEvent()` computes `unmapped`, and
-       `event-store.spec.ts` asserts an unknown extra field is stored intact in `raw` and
-       surfaced in `unmapped`. Remaining: route the existing adapters — radio, CAD, UI —
-       through the store.)*
-3. [ ] Build projections from `normalized`, with `raw` queryable for anything not yet
-       projected.
+       `unmapped`. *(Mechanism + proof done (`losslessEvent()` + `event-store.spec.ts`).
+       The **radio** and **incident.created** adapters now commit to the Core with the full
+       envelope in `raw`. Remaining: the CAD and UI adapters, and applying `losslessEvent`
+       uniformly so every adapter computes `unmapped`.)*
+3. [~] Build projections from the log. *(Done for incident + comms via the `Projector`
+       (ADR-0004); `raw` stays in the log for anything not yet projected.)*
 4. [ ] Add an "unmapped review" surface (a simple report of distinct unmapped keys per
        source) so promoting a new field to a slot is routine.
 5. [ ] Pair this with the Data Sources & Capture Inventory

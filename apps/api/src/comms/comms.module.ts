@@ -1,22 +1,20 @@
 import { Module } from '@nestjs/common';
 import { CommsController } from './comms.controller';
 import { CommsService } from './comms.service';
-import { RosterService } from './roster';
 import { CorrelationService } from './correlation';
-import { IncidentsModule } from '../incidents/incidents.module';
 import { EventsModule } from '../events/events.module';
+import { ProjectionsModule } from '../projections/projections.module';
 
 /**
- * The comms facet / radio-events seam. Depends on IncidentsModule so it can fold
- * radio traffic onto the correct incident record, and on EventsModule so a mayday
- * is published to the real-time (SSE) stream. Correlation and roster are providers
- * here; a full build backs the roster with personnel/apparatus tables and drives
- * correlation from the CAD feed.
+ * The radio seam. Appends radio events to the Core (global CoreModule), correlates
+ * them (CorrelationService), drives the projector to fold them onto the incident's
+ * comms facet (ProjectionsModule), and publishes to the SSE stream (EventsModule).
+ * Roster lives in ProjectionsModule now (the projector resolves units).
  */
 @Module({
-  imports: [IncidentsModule, EventsModule],
+  imports: [EventsModule, ProjectionsModule],
   controllers: [CommsController],
-  providers: [CommsService, RosterService, CorrelationService],
-  exports: [CommsService, RosterService, CorrelationService],
+  providers: [CommsService, CorrelationService],
+  exports: [CommsService, CorrelationService],
 })
 export class CommsModule {}

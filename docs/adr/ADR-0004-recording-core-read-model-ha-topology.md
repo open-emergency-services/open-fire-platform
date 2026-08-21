@@ -198,8 +198,11 @@ dedicated ingest service); snapshot cadence for read-model rebuild.
 1. [~] Define the Core event-log schema (append-only, monotonic id, `schema_version`) and
        the writer interface. *(Done: `EventStore` interface + in-memory + Postgres impls +
        DDL in `apps/api/src/core/`. Remaining: make `EventPublisher` durable on top of it.)*
-2. [ ] Build the projector: consume the Core log (logical decoding) → materialize the
-       incident/comms read model; turn today's in-memory store into that projection.
+2. [x] Build the projector: consume the Core log → materialize the incident/comms read
+       model. *(Done: `apps/api/src/projections/` — `Projector` applies `incident.created`
+       + radio events to `IncidentReadModel`; `rebuild()` replays the log; a test proves
+       the read model is identical after a full rebuild. Remaining: drive it from Postgres
+       logical decoding for out-of-process/multi-node.)*
 3. [ ] Extract **urgent delivery** into its own stateless service consuming the Core's
        committed log; keep it minimal. Split the richer `info` firehose into its own service.
 4. [ ] Point the alert stream at the Core's committed log (not the read model).

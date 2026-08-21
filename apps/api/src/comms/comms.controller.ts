@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { CommsService } from './comms.service';
 import { CorrelationService, IncidentRef } from './correlation';
-import { RosterService } from './roster';
+import { RosterService } from '../projections/roster';
 import { RadioSystemId, talkgroupKey, unitKey } from './radio-event';
 
 /**
