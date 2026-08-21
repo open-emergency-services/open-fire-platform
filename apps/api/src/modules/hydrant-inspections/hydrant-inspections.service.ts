@@ -1,21 +1,27 @@
-import { Injectable, Logger, NotFoundException, OnApplicationBootstrap } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnApplicationBootstrap,
+} from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { NerisHydrantInspection } from '@ofp/neris-schema';
 import { EventStore } from '../../core/event-store';
 import { StoredEvent } from '../../core/stored-event';
-import { HydrantInspectionRecord } from './hydrant-inspection.entity';
+import { HistoryEntry, HydrantInspectionRecord } from './hydrant-inspection.entity';
 
-const SOURCE_TYPE = 'hydrant.inspection.created';
+const CREATED = 'hydrant.inspection.created';
+const UPDATED = 'hydrant.inspection.updated';
+const DELETED = 'hydrant.inspection.deleted';
+const TYPES = new Set([CREATED, UPDATED, DELETED]);
 
 /**
- * Hydrant inspections — a Regular-tier module (ADR-0005) and the TEMPLATE every future
- * data-entry screen follows.
- *
- * The pattern: writes append to the Core (the source of truth); the module keeps its own
- * read model, projected from the committed events; on boot it rebuilds that read model
- * from the durable log. Self-contained — adding a new screen is copying this shape,
- * not editing anything central. Fields come straight from the generated
- * `NerisHydrantInspection` interface, so there's no data modeling to do.
+ * Hydrant inspections — the Regular-tier reference module (ADR-0005) and the CRUD-on-
+ * event-sourcing template (ADR-0007). Create/update/delete each append an event; the
+ * log is never mutated. An edit is an `updated` event merged onto the read model; a
+ * delete is a `deleted` tombstone. `history()` returns the full audit trail. Optimistic
+ * concurrency via `version`. On boot the read model rebuilds from the durable log.
  */
 @Injectable()
 export class HydrantInspectionsService implements OnApplicationBootstrap {
@@ -25,40 +31,104 @@ export class HydrantInspectionsService implements OnApplicationBootstrap {
   constructor(private readonly store: EventStore) {}
 
   async onApplicationBootstrap(): Promise<void> {
-    const events = await this.store.all();
     this.readModel.clear();
-    for (const e of events) if (e.source_type === SOURCE_TYPE) this.project(e);
+    for (const e of await this.store.all()) if (TYPES.has(e.source_type)) this.project(e);
     if (this.readModel.size) this.log.log(`Rebuilt ${this.readModel.size} hydrant inspections from the log.`);
   }
 
   async create(data: Partial<NerisHydrantInspection>): Promise<HydrantInspectionRecord> {
     const id = randomUUID();
-    const ts = new Date().toISOString();
     const { event } = await this.store.append({
       event_id: randomUUID(),
       source: 'ui',
-      source_type: SOURCE_TYPE,
-      occurred_at: ts,
+      source_type: CREATED,
+      occurred_at: new Date().toISOString(),
       raw: { id, data },
       normalized: { id, data },
-      correlation: data.hydrant_id ? { hydrant_id: data.hydrant_id } : undefined,
+      correlation: { record_id: id, ...(data.hydrant_id ? { hydrant_id: data.hydrant_id } : {}) },
     });
     this.project(event);
     return this.getOrThrow(id);
   }
 
+  /** Edit = append an `updated` event with the changed fields (ADR-0007). */
+  async update(
+    id: string,
+    changes: Partial<NerisHydrantInspection>,
+    expectedVersion?: number,
+    reason?: string,
+  ): Promise<HydrantInspectionRecord> {
+    const rec = this.getOrThrow(id);
+    this.checkVersion(rec, expectedVersion);
+    const { event } = await this.store.append({
+      event_id: randomUUID(),
+      source: 'ui',
+      source_type: UPDATED,
+      occurred_at: new Date().toISOString(),
+      raw: { id, changes, reason },
+      normalized: { id, changes, ...(reason ? { reason } : {}) },
+      correlation: { record_id: id },
+    });
+    this.project(event);
+    return this.getOrThrow(id);
+  }
+
+  /** Delete = append a tombstone (soft delete); history stays in the log (ADR-0007). */
+  async remove(id: string, expectedVersion?: number, reason?: string): Promise<void> {
+    const rec = this.getOrThrow(id);
+    this.checkVersion(rec, expectedVersion);
+    const { event } = await this.store.append({
+      event_id: randomUUID(),
+      source: 'ui',
+      source_type: DELETED,
+      occurred_at: new Date().toISOString(),
+      raw: { id, reason },
+      normalized: { id, ...(reason ? { reason } : {}) },
+      correlation: { record_id: id },
+    });
+    this.project(event);
+  }
+
+  /** Full ordered audit trail for a record — including deleted ones (ADR-0007). */
+  async history(id: string): Promise<HistoryEntry[]> {
+    const events = await this.store.byCorrelation('record_id', id);
+    return events.map((e) => ({
+      seq: e.seq,
+      type: e.source_type.replace('hydrant.inspection.', ''),
+      at: e.occurred_at ?? e.received_at,
+      by: e.source,
+      changes: (e.normalized as Record<string, unknown>) ?? {},
+    }));
+  }
+
   list(): HydrantInspectionRecord[] {
-    return [...this.readModel.values()];
+    return [...this.readModel.values()].filter((r) => !r.deleted);
   }
 
   getOrThrow(id: string): HydrantInspectionRecord {
     const rec = this.readModel.get(id);
-    if (!rec) throw new NotFoundException('Hydrant inspection not found');
+    if (!rec || rec.deleted) throw new NotFoundException('Hydrant inspection not found');
     return rec;
   }
 
+  private checkVersion(rec: HydrantInspectionRecord, expected?: number): void {
+    if (expected != null && rec.version !== expected) {
+      throw new ConflictException(`Version conflict: expected ${expected}, current ${rec.version}`);
+    }
+  }
+
+  /** Apply one committed event to the read model. */
   private project(e: StoredEvent): void {
-    const n = e.normalized as { id: string; data?: Partial<NerisHydrantInspection> };
-    this.readModel.set(n.id, { id: n.id, data: n.data ?? {}, createdAt: e.occurred_at ?? e.received_at });
+    const n = e.normalized as { id: string; data?: Partial<NerisHydrantInspection>; changes?: Partial<NerisHydrantInspection> };
+    const ts = e.occurred_at ?? e.received_at;
+    if (e.source_type === CREATED) {
+      this.readModel.set(n.id, { id: n.id, data: n.data ?? {}, version: 1, deleted: false, createdAt: ts, updatedAt: ts });
+    } else if (e.source_type === UPDATED) {
+      const rec = this.readModel.get(n.id);
+      if (rec) { rec.data = { ...rec.data, ...(n.changes ?? {}) }; rec.version += 1; rec.updatedAt = ts; }
+    } else if (e.source_type === DELETED) {
+      const rec = this.readModel.get(n.id);
+      if (rec) { rec.deleted = true; rec.version += 1; rec.updatedAt = ts; }
+    }
   }
 }

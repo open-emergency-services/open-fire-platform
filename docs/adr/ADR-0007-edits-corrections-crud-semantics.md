@@ -51,13 +51,16 @@ append can carry an expected record version; if the record changed since it was 
 append is rejected and the client re-reads. Prevents silent lost updates.
 
 **7. Lawful erasure vs. immutability (PII).** An append-only log conflicts with a legal
-right-to-erasure (a patient name entered in error, a deletion order; CJIS/HIPAA/GDPR). Two
-sanctioned resolutions, used together as needed:
-- **Crypto-shredding:** store PII encrypted with a per-subject key; to "erase," destroy the
-  key — the data is unrecoverable while the event structure and audit trail survive.
-- **Externalized PII:** keep PII in a separate *mutable* store referenced by id from the
-  log, so a lawful delete doesn't require mutating the log.
-This keeps immutability for auditability while providing a real path to erase personal data.
+right-to-erasure (a patient name entered in error, a deletion order; CJIS/HIPAA/GDPR). PII
+never goes into an event's `raw`/`normalized`; the module stores it in a **PII vault** and
+keeps only an opaque **token** in the log. **Both** resolutions are implemented as
+interchangeable strategies (`apps/api/src/pii/`, config-driven via `PII_STRATEGY`):
+- **Externalized (default):** PII lives in a separate (HIPAA-compliant) store/host; erase
+  deletes it. The token in the log then resolves to null.
+- **Crypto-shredding:** PII stored encrypted per-subject (AES-256-GCM); erase destroys the
+  key, making the ciphertext permanently unrecoverable.
+Either way the log stays immutable and the audit structure intact, while personal data is
+lawfully erasable. Default is externalized (operator preference); switch with one env var.
 
 **8. Not everything is event-sourced.** Event-source the records that need an audit trail
 (incidents, inspections, maydays, anything regulated). Purely operational or reference data
@@ -94,10 +97,14 @@ erasable. All manageable, none exotic.
 
 ## Action Items
 
-1. [ ] Add `*.updated` + `*.deleted` event handling to the projector's dispatch (per module).
-2. [ ] Implement the reference edit flow on hydrant inspections (`PATCH`, soft-delete,
-       `GET /:id/history`) as the template for every module.
-3. [ ] Add optimistic-concurrency (expected version) to the append path where edits happen.
+1. [x] Add `*.updated` + `*.deleted` event handling to the projection (per module). *(Done in
+       the hydrant reference module.)*
+2. [x] Implement the reference edit flow on hydrant inspections (`PATCH`, soft-delete,
+       `GET /:id/history`) as the template for every module. *(Done —
+       `apps/api/src/modules/hydrant-inspections/` + `apps/web/hydrant.html`.)*
+3. [x] Add optimistic-concurrency (expected version) to the edit path. *(Done — `expectedVersion`
+       → 409 on conflict.)*
 4. [ ] Define the editability lifecycle (draft/submitted/closed) and enforce at the command layer.
-5. [ ] Decide the PII strategy (crypto-shred vs externalize) before storing personal data
-       (personnel, EMS patient); pairs with CJIS/HIPAA compliance work.
+5. [x] PII strategy — **both** implemented and interchangeable (`apps/api/src/pii/`): externalized
+       (default) and crypto-shred, config-driven via `PII_STRATEGY`. *(Wire the first real consumer
+       — the personnel/roster module — when built; pairs with CJIS/HIPAA compliance.)*

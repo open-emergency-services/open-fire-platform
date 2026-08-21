@@ -5,6 +5,7 @@ import { NerisModule } from './neris/neris.module';
 import { CommsModule } from './comms/comms.module';
 import { EventsModule } from './events/events.module';
 import { CoreModule } from './core/core.module';
+import { PiiModule } from './pii/pii.module';
 import { IngestModule } from './ingest/ingest.module';
 import { HydrantInspectionsModule } from './modules/hydrant-inspections/hydrant-inspections.module';
 
@@ -15,6 +16,7 @@ import { HydrantInspectionsModule } from './modules/hydrant-inspections/hydrant-
 @Module({
   imports: [
     CoreModule,
+    PiiModule,
     HealthModule,
     IngestModule,
     NerisModule,

@@ -73,7 +73,8 @@
       <div class="check"><input type="checkbox" name="private_hydrant" /><label style="margin:0">Private hydrant</label></div>
       <label>Notes</label>
       <textarea name="notes" rows="2" placeholder="Flow good; cap replaced."></textarea>
-      <button type="submit">Save inspection</button>
+      <button type="submit" id="submitBtn">Save inspection</button>
+      <button type="button" id="cancelBtn" style="display:none;background:#2a3140;color:var(--text);">Cancel edit</button>
       <div class="msg" id="msg"></div>
     </form>
   </section>
@@ -90,12 +91,14 @@
   var API = params.get('api') || 'http://localhost:3000/api/v1';
   document.getElementById('apiLabel').textContent = API;
   var form = document.getElementById('form'), msg = document.getElementById('msg');
+  var submitBtn = document.getElementById('submitBtn'), cancelBtn = document.getElementById('cancelBtn');
+  var records = [];            // last-loaded list
+  var editing = null;          // { id, version } when editing, else null
 
   function num(v){ return v === '' || v == null ? undefined : Number(v); }
   function arr(v){ return v ? v.split(',').map(function(s){return s.trim();}).filter(Boolean) : undefined; }
 
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
+  function formData() {
     var f = new FormData(form);
     var data = {
       hydrant_id: f.get('hydrant_id') || undefined,
@@ -112,27 +115,72 @@
       notes: f.get('notes') || undefined
     };
     Object.keys(data).forEach(function(k){ if (data[k] === undefined) delete data[k]; });
+    return data;
+  }
 
-    fetch(API + '/hydrant-inspections', {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data)
-    }).then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(function(){ msg.className='msg ok'; msg.textContent='Saved.'; form.reset(); form.operable.checked=true; load(); })
-      .catch(function(err){ msg.className='msg err'; msg.textContent='Save failed: ' + err.message; });
+  function resetForm() {
+    form.reset(); form.operable.checked = true; editing = null;
+    submitBtn.textContent = 'Save inspection'; cancelBtn.style.display = 'none';
+  }
+  cancelBtn.addEventListener('click', resetForm);
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var data = formData();
+    var url, method;
+    if (editing) {
+      // Edit → PATCH; append an `updated` event, with optimistic-concurrency version.
+      url = API + '/hydrant-inspections/' + editing.id + '?expectedVersion=' + editing.version;
+      method = 'PATCH';
+    } else {
+      url = API + '/hydrant-inspections'; method = 'POST';
+    }
+    fetch(url, { method: method, headers: { 'content-type':'application/json' }, body: JSON.stringify(data) })
+      .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status + (r.status===409?' (someone else edited this — reload)':'')); return r.json(); })
+      .then(function(){ msg.className='msg ok'; msg.textContent = editing ? 'Updated.' : 'Saved.'; resetForm(); load(); })
+      .catch(function(err){ msg.className='msg err'; msg.textContent = (editing?'Update':'Save')+' failed: ' + err.message; });
   });
+
+  function startEdit(id) {
+    var rec = records.find(function(r){ return r.id === id; }); if (!rec) return;
+    var d = rec.data || {};
+    form.hydrant_id.value = d.hydrant_id || ''; form.inspection_date.value = d.inspection_date || '';
+    form.main_size.value = d.main_size != null ? d.main_size : ''; form.latitude.value = d.latitude != null ? d.latitude : '';
+    form.longitude.value = d.longitude != null ? d.longitude : '';
+    form.impediment_type.value = (d.impediment_type||[]).join(', '); form.nfpa_rating_color.value = (d.nfpa_rating_color||[]).join(', ');
+    form.operable.checked = d.operable !== false; form.functional_impediment.checked = !!d.functional_impediment;
+    form.maintenence_referred.checked = !!d.maintenence_referred; form.private_hydrant.checked = !!d.private_hydrant;
+    form.notes.value = d.notes || '';
+    editing = { id: id, version: rec.version };
+    submitBtn.textContent = 'Update (v' + rec.version + ')'; cancelBtn.style.display = 'block';
+    msg.className='msg'; msg.textContent=''; window.scrollTo(0,0);
+  }
+
+  function del(id) {
+    var rec = records.find(function(r){ return r.id === id; }); if (!rec) return;
+    if (!confirm('Delete this inspection? (history is kept in the log)')) return;
+    fetch(API + '/hydrant-inspections/' + id + '?expectedVersion=' + rec.version, { method:'DELETE' })
+      .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(){ msg.className='msg ok'; msg.textContent='Deleted.'; if (editing && editing.id===id) resetForm(); load(); })
+      .catch(function(err){ msg.className='msg err'; msg.textContent='Delete failed: ' + err.message; });
+  }
 
   function load() {
     fetch(API + '/hydrant-inspections').then(function(r){ return r.json(); }).then(function(list){
+      records = list || [];
       var box = document.getElementById('list');
-      if (!list || !list.length){ box.innerHTML = '<div class="empty">None yet.</div>'; return; }
-      var rows = list.map(function(rec){
+      if (!records.length){ box.innerHTML = '<div class="empty">None yet.</div>'; return; }
+      var rows = records.map(function(rec){
         var d = rec.data || {};
-        var op = d.operable === false
-          ? '<span class="pill bad">out of service</span>'
-          : '<span class="pill ok">operable</span>';
+        var op = d.operable === false ? '<span class="pill bad">out of service</span>' : '<span class="pill ok">operable</span>';
         return '<tr><td>'+ (d.hydrant_id||'—') +'</td><td>'+ (d.inspection_date||'—') +'</td><td>'+ op +
-               '</td><td>'+ ((d.impediment_type||[]).join(', ')||'—') +'</td><td>'+ (d.notes||'') +'</td></tr>';
+               '</td><td>'+ ((d.impediment_type||[]).join(', ')||'—') +'</td><td>'+ (d.notes||'') +
+               '</td><td style="white-space:nowrap;"><a href="#" data-edit="'+rec.id+'" style="color:var(--accent);">edit</a> · '+
+               '<a href="#" data-del="'+rec.id+'" style="color:var(--bad);">delete</a></td></tr>';
       }).join('');
-      box.innerHTML = '<table><thead><tr><th>Hydrant</th><th>Date</th><th>Status</th><th>Impediment</th><th>Notes</th></tr></thead><tbody>'+rows+'</tbody></table>';
+      box.innerHTML = '<table><thead><tr><th>Hydrant</th><th>Date</th><th>Status</th><th>Impediment</th><th>Notes</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+      box.querySelectorAll('[data-edit]').forEach(function(a){ a.onclick=function(e){e.preventDefault();startEdit(a.getAttribute('data-edit'));}; });
+      box.querySelectorAll('[data-del]').forEach(function(a){ a.onclick=function(e){e.preventDefault();del(a.getAttribute('data-del'));}; });
     }).catch(function(){});
   }
   load();
