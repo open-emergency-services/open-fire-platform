@@ -1,8 +1,8 @@
 // AUTO-GENERATED from the NERIS data framework. DO NOT EDIT BY HAND.
-// Re-run: node scripts/generate.mjs
+// Re-run: NERIS_FRAMEWORK_PATH=... node scripts/generate.mjs
 // Source: github.com/ulfsri/neris-framework
 
-/** Fields NERIS marks 'neris_core' — required for a minimally-complete record. */
+/** Fields NERIS marks 'neris_core' — required for a minimally-complete incident. */
 export const NERIS_CORE_FIELDS = [
   "incident_neris_id",
   "incident_internal_id",

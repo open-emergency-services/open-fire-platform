@@ -10,13 +10,17 @@ git clone --depth 1 https://github.com/ulfsri/neris-framework
 NERIS_FRAMEWORK_PATH=./neris-framework npm run generate
 ```
 
-Produces in `src/generated/`:
+Produces in `src/generated/` — **the whole framework, not just incidents**:
 
 | File | Contents |
 |---|---|
-| `incident-core.generated.ts` | `NerisIncidentCore` interface (non-computed fields, typed, with docs) |
-| `neris-core-fields.generated.ts` | `NERIS_CORE_FIELDS` — the minimal-record required fields |
-| `incident-types.generated.ts` | `NERIS_INCIDENT_TYPES` hierarchy + `NerisIncidentLeafType` union |
+| `modules.generated.ts` | A typed interface for **every** NERIS module — incident + sub-modules, dispatch (CAD), the fire-dept entity (stations/units/PSAP), shared sub-modules, augmentation, and the secondary schemas (inspections, hydrants, CRR, health & safety, incident analysis). ~39 interfaces. Includes `NerisIncidentCore`. |
+| `value-sets.generated.ts` | Every value set as an `as const` array (`VS_TYPE_…`) + a union type. ~157 sets. |
+| `neris-core-fields.generated.ts` | `NERIS_CORE_FIELDS` — the incident minimal-record required fields |
+| `incident-types.generated.ts` | `NERIS_INCIDENT_TYPES` — the 128-entry incident-type hierarchy |
+
+This is what makes "capture every field the standard defines" (see
+`docs/DATA-CAPTURE-INVENTORY.md` + ADR-0006) true by construction.
 
 The generated files **are** checked in (so the repo builds without the framework
 present), but they are derived artifacts — never hand-edit them; re-run the
