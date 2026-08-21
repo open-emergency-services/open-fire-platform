@@ -105,10 +105,14 @@ something new.
 
 ## Action Items
 
-1. [ ] Implement the stored-event shape above in the Core schema.
-2. [ ] Make every adapter lossless: map → `normalized`, pass through → `raw`, diff →
-       `unmapped`. Add a test that asserts an event with an unknown extra field is stored
-       with that field intact in `raw`.
+1. [x] Implement the stored-event shape above in the Core schema. *(Done: `apps/api/src/core/`
+       — `stored-event.ts`, `event-store.ts` (in-memory), `pg-event-store.ts`, and the
+       `migrations/0001_event_log.sql` DDL.)*
+2. [~] Make every adapter lossless: map → `normalized`, pass through → `raw`, diff →
+       `unmapped`. *(Mechanism + proof done: `losslessEvent()` computes `unmapped`, and
+       `event-store.spec.ts` asserts an unknown extra field is stored intact in `raw` and
+       surfaced in `unmapped`. Remaining: route the existing adapters — radio, CAD, UI —
+       through the store.)*
 3. [ ] Build projections from `normalized`, with `raw` queryable for anything not yet
        projected.
 4. [ ] Add an "unmapped review" surface (a simple report of distinct unmapped keys per

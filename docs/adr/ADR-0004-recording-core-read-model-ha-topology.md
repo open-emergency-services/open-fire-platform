@@ -195,8 +195,9 @@ dedicated ingest service); snapshot cadence for read-model rebuild.
 
 ## Action Items
 
-1. [ ] Define the Core event-log schema (append-only, monotonic id, `schema_version`) and
-       the writer interface; make `EventPublisher` durable on top of it.
+1. [~] Define the Core event-log schema (append-only, monotonic id, `schema_version`) and
+       the writer interface. *(Done: `EventStore` interface + in-memory + Postgres impls +
+       DDL in `apps/api/src/core/`. Remaining: make `EventPublisher` durable on top of it.)*
 2. [ ] Build the projector: consume the Core log (logical decoding) → materialize the
        incident/comms read model; turn today's in-memory store into that projection.
 3. [ ] Extract **urgent delivery** into its own stateless service consuming the Core's
