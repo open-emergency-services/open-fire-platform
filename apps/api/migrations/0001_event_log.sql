@@ -26,5 +26,15 @@ CREATE INDEX IF NOT EXISTS event_log_correlation_idx ON event_log USING GIN (cor
 CREATE INDEX IF NOT EXISTS event_log_session_idx     ON event_log (session_id, source_seq);
 
 -- Enforce append-only at the database (belt-and-suspenders; app never issues these anyway).
-CREATE OR REPLACE RULE event_log_no_update AS ON UPDATE TO event_log DO INSTEAD NOTHING;
-CREATE OR REPLACE RULE event_log_no_delete AS ON DELETE TO event_log DO INSTEAD NOTHING;
+-- A TRIGGER is used rather than a RULE: rules on UPDATE/DELETE would block the INSERT
+-- ... ON CONFLICT the append path relies on. The trigger raises on any UPDATE/DELETE.
+CREATE OR REPLACE FUNCTION event_log_immutable() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'event_log is append-only: % is not allowed', TG_OP;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS event_log_no_mutate ON event_log;
+CREATE TRIGGER event_log_no_mutate
+  BEFORE UPDATE OR DELETE ON event_log
+  FOR EACH ROW EXECUTE FUNCTION event_log_immutable();

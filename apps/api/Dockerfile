@@ -11,6 +11,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /repo/apps/api/dist ./dist
 COPY --from=build /repo/apps/api/package.json ./
+COPY --from=build /repo/apps/api/migrations ./migrations
 COPY --from=build /repo/node_modules ./node_modules
 EXPOSE 3000
 CMD ["node", "dist/main.js"]

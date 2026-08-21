@@ -76,7 +76,12 @@ All schema-ready; screens/endpoints are the backlog.
 
 ## What to build next (Wave 0 → 1)
 
-- Replace the in-memory incident repo with Postgres (docker-compose provisions it).
+- ~~Replace the in-memory incident repo with Postgres.~~ **Done** — the Core event log is
+  Postgres-backed when `DATABASE_URL` is set (in-memory otherwise); migrations run on boot,
+  and the read model is **rebuilt from the persisted log on startup** (a restart loses
+  nothing). Verified: events survive a full process restart and the read model reconstructs
+  from them; the log is append-only (UPDATE/DELETE blocked by trigger). Reference data (the
+  roster) is loaded separately, not from the event log.
 - Add Keycloak (OIDC) and resolve `departmentId` from the session, not a header.
 - Schema-driven incident form UI generated from `@ofp/neris-schema`.
 - The unified UI shell (§2.6 of the blueprint) that later modules render inside.
