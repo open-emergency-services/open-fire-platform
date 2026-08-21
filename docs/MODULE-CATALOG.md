@@ -61,7 +61,7 @@ This is the group you called out (hydrant maintenance, community events, …).
 | Screen / form | Interface | Captures (examples) |
 |---|---|---|
 | CRR record (rollup) | `NerisCoreCRR` | links home visits, events, hydrant & parcel data |
-| **Hydrant inspection / maintenance** | `NerisHydrantInspection` | hydrant id, date, lat/long, operable, impediment type, flow |
+| **Hydrant inspection / maintenance** ✅ built | `NerisHydrantInspection` | hydrant id, date, lat/long, operable, impediment type, flow |
 | Commercial inspection | `NerisCommercialInspection` | location, date, reinspection, code requirements |
 | Structure inspection | `NerisStructureInspection` | units, vacancy, year built, findings |
 | Outdoor inspection | `NerisOutdoorInspection` | location, distances between structures |
@@ -98,6 +98,12 @@ This is the group you called out (hydrant maintenance, community events, …).
 
 Nothing here is urgent — it's the backlog of "things the system can save," all schema-ready.
 We add each as a little page when we get to it.
+
+**Reference implementation:** hydrant inspection is built end-to-end as the template every
+other screen copies — `apps/api/src/modules/hydrant-inspections/` (Regular-tier endpoints:
+`POST/GET /api/v1/hydrant-inspections`, event-sourced onto the Core, own read model rebuilt
+from the log on boot) and `apps/web/hydrant.html` (the data-entry form). A new screen is
+that shape with a different generated interface.
 
 ## Not-from-NERIS screens (still to model)
 

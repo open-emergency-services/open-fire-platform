@@ -6,12 +6,22 @@ import { CommsModule } from './comms/comms.module';
 import { EventsModule } from './events/events.module';
 import { CoreModule } from './core/core.module';
 import { IngestModule } from './ingest/ingest.module';
+import { HydrantInspectionsModule } from './modules/hydrant-inspections/hydrant-inspections.module';
 
 /**
  * Wave-0 API. As modules are added (scheduling, responder, ePCR…), each becomes
  * its own feature module imported here, rendered behind the single UI shell.
  */
 @Module({
-  imports: [CoreModule, HealthModule, IngestModule, NerisModule, IncidentsModule, CommsModule, EventsModule],
+  imports: [
+    CoreModule,
+    HealthModule,
+    IngestModule,
+    NerisModule,
+    IncidentsModule,
+    CommsModule,
+    EventsModule,
+    HydrantInspectionsModule,
+  ],
 })
 export class AppModule {}
