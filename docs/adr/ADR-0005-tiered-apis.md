@@ -144,8 +144,10 @@ Adding an endpoint to the **Essential** tier requires a high bar, applied delibe
 
 ## Action Items
 
-1. [ ] Define the exact Essential endpoint set and freeze it at `/api/v1` (ingest, read
-       incident/list, export, health/readiness).
+1. [x] Define the exact Essential endpoint set and freeze it at `/api/v1` (ingest, read
+       incident/list, export, health/readiness). *(Done: generic `POST /api/v1/ingest`
+       (`apps/api/src/ingest/`), incident reads/export, and the liveness/readiness split
+       (`apps/api/src/health/`) with graceful drain. Frozen surface: [ESSENTIAL-API.md](../api/ESSENTIAL-API.md).)*
 2. [ ] Choose the routing/namespacing scheme (path prefix per tier is the likely default:
        `/api/v1` essential, `/api/v2…` regular, `/api/experimental/…` experimental).
 3. [ ] Set per-tier versioning + deprecation policy (Essential: years; Regular: shorter;

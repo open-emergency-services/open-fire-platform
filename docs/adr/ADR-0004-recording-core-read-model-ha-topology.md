@@ -208,8 +208,11 @@ dedicated ingest service); snapshot cadence for read-model rebuild.
 4. [ ] Point the alert stream at the Core's committed log (not the read model).
 5. [ ] Mandate the writer/read-model boundary + per-service network contracts in code so
        L1 → L2 is config-only.
-6. [ ] Add **health/readiness** endpoints (split liveness vs readiness) and **graceful
-       drain** (flip not-ready → close SSE streams) to every stateless service, for the LB.
+6. [~] Add **health/readiness** endpoints (split liveness vs readiness) and **graceful
+       drain** to every stateless service, for the LB. *(Done for the API: `/health/live`,
+       `/health/ready` (503 while draining), `ReadinessService` flips on shutdown via
+       `enableShutdownHooks()`. Remaining: SSE stream-close on drain, and the same on the
+       other stateless services as they're split out.)*
 7. [ ] Ship the default **HAProxy + ≥ 2 replicas** front; verify SSE settings (no
        buffering, idle timeout > 15s heartbeat, least-connections).
 8. [ ] Package topologies: compose profiles / Helm values for `single-node-dev`,

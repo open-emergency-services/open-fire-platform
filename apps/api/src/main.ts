@@ -6,6 +6,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api/v1');
   app.enableCors();
+  app.enableShutdownHooks(); // fire readiness drain (ADR-0004 LB contract) on SIGTERM
   const { port } = getConfig();
   await app.listen(port);
   // eslint-disable-next-line no-console
