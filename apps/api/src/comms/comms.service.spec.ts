@@ -9,6 +9,7 @@ import { RosterService } from '../projections/roster';
 import { Projector } from '../projections/projector';
 import { CorrelationService } from './correlation';
 import { CommsService } from './comms.service';
+import { RecordsService } from '../modules/records/records.service';
 import { EventPublisher } from '../events/event-publisher';
 import { DomainEvent } from '../events/domain-event';
 import { RadioSystemId, talkgroupKey } from './radio-event';
@@ -54,8 +55,9 @@ describe('CommsService (radio seam, event-sourced)', () => {
     readModel = new IncidentReadModel();
     roster = new RosterService();
     projector = new Projector(readModel, roster);
-    incidents = new IncidentsService(new NerisGateway(), store, readModel, projector);
     events = new EventPublisher();
+    const records = new RecordsService(store, events, projector);
+    incidents = new IncidentsService(new NerisGateway(), store, readModel, projector, records);
     correlation = new CorrelationService();
     comms = new CommsService(store, correlation, events, projector);
 

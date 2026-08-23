@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from './auth/auth.module';
 import { HealthModule } from './health/health.module';
 import { IncidentsModule } from './incidents/incidents.module';
 import { NerisModule } from './neris/neris.module';
@@ -8,6 +9,7 @@ import { CoreModule } from './core/core.module';
 import { PiiModule } from './pii/pii.module';
 import { IngestModule } from './ingest/ingest.module';
 import { HydrantInspectionsModule } from './modules/hydrant-inspections/hydrant-inspections.module';
+import { RecordsModule } from './modules/records/records.module';
 
 /**
  * Wave-0 API. As modules are added (scheduling, responder, ePCR…), each becomes
@@ -15,6 +17,7 @@ import { HydrantInspectionsModule } from './modules/hydrant-inspections/hydrant-
  */
 @Module({
   imports: [
+    AuthModule,
     CoreModule,
     PiiModule,
     HealthModule,
@@ -24,6 +27,7 @@ import { HydrantInspectionsModule } from './modules/hydrant-inspections/hydrant-
     CommsModule,
     EventsModule,
     HydrantInspectionsModule,
+    RecordsModule,
   ],
 })
 export class AppModule {}

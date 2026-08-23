@@ -44,11 +44,80 @@ export class Projector {
   /** Apply one committed event to the read model (dispatch by type). */
   project(e: StoredEvent): void {
     if (e.source_type === 'incident.created') {
-      this.applyIncidentCreated(e);
+      this.applyIncidentCreated(e); // legacy write path (kept so old logs still replay)
+    } else if (e.source_type === 'record.incident-core.created') {
+      this.applyIncidentCoreCreated(e); // canonical: an incident IS an incident-core record
+    } else if (e.source_type === 'record.incident-core.updated') {
+      this.applyIncidentCoreUpdated(e);
+    } else if (e.source_type === 'record.incident-core.deleted') {
+      this.applyIncidentCoreDeleted(e);
+    } else if (e.source_type === 'incident.validated') {
+      this.applyIncidentValidated(e);
+    } else if (e.source_type === 'incident.submitted') {
+      this.applyIncidentSubmitted(e);
     } else if (e.source === 'open-p25-console') {
       this.applyRadioEvent(e);
     }
-    // Other event types (incident.validated/submitted, other sources) land here later.
+  }
+
+  /** Fold a validation result onto the incident (status + which core fields are missing). */
+  private applyIncidentValidated(e: StoredEvent): void {
+    const n = e.normalized as { id: string; status: IncidentStatus; validationGaps?: string[] };
+    const rec = this.readModel.get(n.id);
+    if (rec) {
+      rec.status = n.status;
+      rec.validationGaps = n.validationGaps ?? [];
+      rec.updatedAt = e.occurred_at ?? e.received_at;
+    }
+  }
+
+  /** Fold a submission outcome onto the incident (accepted/rejected + NERIS response). */
+  private applyIncidentSubmitted(e: StoredEvent): void {
+    const n = e.normalized as { id: string; status: IncidentStatus; nerisId?: string; nerisResponse?: unknown };
+    const rec = this.readModel.get(n.id);
+    if (rec) {
+      rec.status = n.status;
+      if (n.nerisId) rec.nerisId = n.nerisId;
+      rec.nerisResponse = n.nerisResponse;
+      rec.updatedAt = e.occurred_at ?? e.received_at;
+    }
+  }
+
+  /**
+   * Project an `incident-core` record into the incident read model — the unification:
+   * the incident-record screen (records/incident-core) is now the canonical source of
+   * incidents, and radio traffic correlates onto these same ids via the comms facet.
+   */
+  private applyIncidentCoreCreated(e: StoredEvent): void {
+    const n = e.normalized as { id: string; departmentId?: string; data?: Record<string, unknown> };
+    const data = n.data ?? {};
+    const ts = e.occurred_at ?? e.received_at;
+    const departmentId = n.departmentId || (data._departmentId as string) || 'DEMO_DEPT';
+    const internalId = (data.incident_internal_id as string) || n.id;
+    this.readModel.put({
+      id: n.id,
+      departmentId,
+      internalId,
+      status: IncidentStatus.Draft,
+      data,
+      validationGaps: [],
+      createdAt: ts,
+      updatedAt: ts,
+    });
+  }
+
+  private applyIncidentCoreUpdated(e: StoredEvent): void {
+    const n = e.normalized as { id: string; changes?: Record<string, unknown> };
+    const rec = this.readModel.get(n.id);
+    if (rec) {
+      rec.data = { ...rec.data, ...(n.changes ?? {}) };
+      rec.updatedAt = e.occurred_at ?? e.received_at; // comms facet + status preserved
+    }
+  }
+
+  private applyIncidentCoreDeleted(e: StoredEvent): void {
+    const n = e.normalized as { id: string };
+    this.readModel.remove(n.id); // drops from the active incident list; history stays in the log
   }
 
   /** Clear the read model and replay the log — the event-sourcing superpower. */

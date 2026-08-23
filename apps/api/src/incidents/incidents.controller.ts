@@ -1,48 +1,47 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { IncidentsService } from './incidents.service';
+import { CurrentPrincipal, Roles } from '../auth/decorators';
+import { Principal } from '../auth/principal';
 
 /**
- * Wave-0 incident API. Auth is stubbed: departmentId comes from a header for
- * the scaffold. Real deployment resolves it from the OAuth/OIDC session
- * (Keycloak) and enforces CJIS-grade access control.
+ * Incident API. The department is taken from the authenticated Principal (ADR-0010) — not a
+ * client-supplied header — so a caller only ever sees and writes their own department's
+ * incidents. `entityId` for NERIS submission comes from the principal when present.
  */
 @Controller('incidents')
 export class IncidentsController {
   constructor(private readonly incidents: IncidentsService) {}
 
-  private dept(header?: string) {
-    return header ?? 'DEMO_DEPT';
-  }
-
   @Get()
-  list(@Query('departmentId') dept?: string) {
-    return this.incidents.list(this.dept(dept));
+  list(@CurrentPrincipal() p: Principal) {
+    return this.incidents.list(p.departmentId);
   }
 
   @Get('export')
-  export(@Query('departmentId') dept?: string) {
-    return this.incidents.export(this.dept(dept));
+  export(@CurrentPrincipal() p: Principal) {
+    return this.incidents.export(p.departmentId);
   }
 
   @Get(':id')
-  get(@Param('id') id: string, @Query('departmentId') dept?: string) {
-    return this.incidents.get(this.dept(dept), id);
+  get(@Param('id') id: string, @CurrentPrincipal() p: Principal) {
+    return this.incidents.get(p.departmentId, id);
   }
 
+  @Roles('responder')
   @Post()
-  create(
-    @Body() body: { internalId: string; data: Record<string, unknown>; departmentId?: string },
-  ) {
-    return this.incidents.create(this.dept(body.departmentId), body.internalId, body.data ?? {});
+  create(@Body() body: { internalId: string; data: Record<string, unknown> }, @CurrentPrincipal() p: Principal) {
+    return this.incidents.create(p.departmentId, body.internalId, body.data ?? {});
   }
 
+  @Roles('officer')
   @Post(':id/validate')
-  validate(@Param('id') id: string, @Body() body: { entityId: string; departmentId?: string }) {
-    return this.incidents.validate(this.dept(body.departmentId), id, body.entityId);
+  validate(@Param('id') id: string, @Body() body: { entityId?: string }, @CurrentPrincipal() p: Principal) {
+    return this.incidents.validate(p.departmentId, id, body.entityId ?? p.entityId ?? p.departmentId);
   }
 
+  @Roles('officer')
   @Post(':id/submit')
-  submit(@Param('id') id: string, @Body() body: { entityId: string; departmentId?: string }) {
-    return this.incidents.submit(this.dept(body.departmentId), id, body.entityId);
+  submit(@Param('id') id: string, @Body() body: { entityId?: string }, @CurrentPrincipal() p: Principal) {
+    return this.incidents.submit(p.departmentId, id, body.entityId ?? p.entityId ?? p.departmentId);
   }
 }

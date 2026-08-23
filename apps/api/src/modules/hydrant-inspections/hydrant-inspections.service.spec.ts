@@ -38,14 +38,32 @@ describe('HydrantInspectionsService (Regular-tier module, event-sourced CRUD)', 
     await expect(svc.update(rec.id, { notes: 'second' }, 1)).rejects.toThrow(/version/i);
   });
 
-  it('soft-deletes (tombstone): gone from the list, but history is preserved', async () => {
+  it('soft-deletes (tombstone): gone from the active list, but history is preserved', async () => {
     const rec = await svc.create({ hydrant_id: 'H-99' });
     await svc.update(rec.id, { notes: 'checked' });
     await svc.remove(rec.id, undefined, 'created in error');
     expect(svc.list()).toHaveLength(0);
-    expect(() => svc.getOrThrow(rec.id)).toThrow();
+    expect(svc.list(true)).toHaveLength(1); // includeDeleted surfaces the voided row
+    expect(() => svc.getOrThrow(rec.id)).toThrow(); // strict write-path getter still refuses it
     const hist = await svc.history(rec.id);
     expect(hist.map((h) => h.type)).toEqual(['created', 'updated', 'deleted']);
+  });
+
+  it('a lookup of a deleted record is discoverable — a tombstone, not a bare 404', async () => {
+    const rec = await svc.create({ hydrant_id: 'H-99' });
+    await svc.remove(rec.id, undefined, 'created in error');
+    const t = svc.lookup(rec.id) as {
+      id: string; deleted: boolean; reason?: string; deletedAt?: string; history: string;
+    };
+    expect(t.deleted).toBe(true); // "this existed and was voided" — not "never existed"
+    expect(t.id).toBe(rec.id); // the real id survives, so an id/event-id lookup resolves
+    expect(t.reason).toBe('created in error');
+    expect(t.deletedAt).toBeTruthy();
+    expect(t.history).toContain(rec.id); // pointer to the retained audit trail
+  });
+
+  it('lookup of an id that never existed is a genuine not-found (distinct from deleted)', () => {
+    expect(() => svc.lookup('never-was')).toThrow(/ever existed/i);
   });
 
   it('rebuilds its read model from the log on boot (durable across restart)', async () => {

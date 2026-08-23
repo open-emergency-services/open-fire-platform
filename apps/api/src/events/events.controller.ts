@@ -3,6 +3,8 @@ import { Observable, merge, of, interval } from 'rxjs';
 import { map, filter } from 'rxjs/operators';
 import { EventPublisher } from './event-publisher';
 import { DomainEvent } from './domain-event';
+import { CurrentPrincipal } from '../auth/decorators';
+import { Principal } from '../auth/principal';
 
 /** Heartbeat cadence — keeps proxies/mobile connections from silently dying. */
 const HEARTBEAT_MS = 15_000;
@@ -29,14 +31,18 @@ export class EventsController {
 
   @Sse('stream')
   stream(
-    @Query('departmentId') departmentId?: string,
+    @CurrentPrincipal() principal: Principal,
     @Query('incidentId') incidentId?: string,
     @Headers('last-event-id') lastEventId?: string,
   ): Observable<MessageEvent> {
     const since = Number.parseInt(lastEventId ?? '', 10) || 0;
+    const dept = principal.departmentId;
 
+    // Tenant scoping (ADR-0010): a client sees its own department's events, plus ops-level
+    // events (empty departmentId — e.g. an uncorrelated mayday) which are visible to all for
+    // mutual aid. Department is taken from the authenticated principal, not the query string.
     const matches = (e: DomainEvent) =>
-      (!departmentId || e.departmentId === departmentId) &&
+      (e.departmentId === '' || e.departmentId === dept) &&
       (!incidentId || e.incidentId === incidentId);
 
     // 1. Replay anything missed since the client's cursor (reconnect catch-up).

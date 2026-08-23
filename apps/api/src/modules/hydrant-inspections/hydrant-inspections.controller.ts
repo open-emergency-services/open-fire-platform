@@ -6,8 +6,9 @@ import { HydrantInspectionsService } from './hydrant-inspections.service';
  * Regular-tier CRUD-on-event-sourcing endpoints (ADR-0005/0007):
  *
  *   POST   /api/v1/hydrant-inspections            create
- *   GET    /api/v1/hydrant-inspections            list (excludes deleted)
- *   GET    /api/v1/hydrant-inspections/:id        read one
+ *   GET    /api/v1/hydrant-inspections            list (excludes deleted; ?includeDeleted=1 to include)
+ *   GET    /api/v1/hydrant-inspections/:id        read one — active record, or a tombstone
+ *                                                 if deleted, or 404 only if it never existed
  *   GET    /api/v1/hydrant-inspections/:id/history  full audit trail (incl. deleted)
  *   PATCH  /api/v1/hydrant-inspections/:id?expectedVersion=N   edit (appends `updated`)
  *   DELETE /api/v1/hydrant-inspections/:id?expectedVersion=N   soft delete (tombstone)
@@ -24,13 +25,14 @@ export class HydrantInspectionsController {
   }
 
   @Get()
-  list() {
-    return this.svc.list();
+  list(@Query('includeDeleted') includeDeleted?: string) {
+    return this.svc.list(includeDeleted === '1' || includeDeleted === 'true');
   }
 
   @Get(':id')
   get(@Param('id') id: string) {
-    return this.svc.getOrThrow(id);
+    // Deleted → a discoverable tombstone (200), not a bare 404 (ADR-0007).
+    return this.svc.lookup(id);
   }
 
   @Get(':id/history')

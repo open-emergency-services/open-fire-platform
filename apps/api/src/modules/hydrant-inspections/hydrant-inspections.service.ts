@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  GoneException,
   Injectable,
   Logger,
   NotFoundException,
@@ -9,7 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { NerisHydrantInspection } from '@ofp/neris-schema';
 import { EventStore } from '../../core/event-store';
 import { StoredEvent } from '../../core/stored-event';
-import { HistoryEntry, HydrantInspectionRecord } from './hydrant-inspection.entity';
+import { HistoryEntry, HydrantInspectionRecord, Tombstone } from './hydrant-inspection.entity';
 
 const CREATED = 'hydrant.inspection.created';
 const UPDATED = 'hydrant.inspection.updated';
@@ -101,13 +102,48 @@ export class HydrantInspectionsService implements OnApplicationBootstrap {
     }));
   }
 
-  list(): HydrantInspectionRecord[] {
-    return [...this.readModel.values()].filter((r) => !r.deleted);
+  list(includeDeleted = false): HydrantInspectionRecord[] {
+    const all = [...this.readModel.values()];
+    return includeDeleted ? all : all.filter((r) => !r.deleted);
   }
 
+  /**
+   * Read one record for display. Three distinct outcomes (ADR-0007) — the whole point is
+   * that a caller can tell them apart:
+   *   - active record  → the live record
+   *   - deleted record → a {@link Tombstone}: "this existed and was voided," + history pointer
+   *   - never existed  → 404
+   * An event-id / record-id lookup therefore always resolves to *something* if the id was
+   * ever real, instead of a bare 404 that can't distinguish voided from never-reported.
+   */
+  lookup(id: string): HydrantInspectionRecord | Tombstone {
+    const rec = this.readModel.get(id);
+    if (!rec) throw new NotFoundException('No hydrant inspection has ever existed with this id');
+    return rec.deleted ? this.tombstone(rec) : rec;
+  }
+
+  private tombstone(rec: HydrantInspectionRecord): Tombstone {
+    return {
+      id: rec.id,
+      deleted: true,
+      deletedAt: rec.deletedAt,
+      reason: rec.deletedReason,
+      version: rec.version,
+      createdAt: rec.createdAt,
+      message: 'This record was deleted. It existed and was voided; its full history is retained in the log.',
+      history: `/api/v1/hydrant-inspections/${rec.id}/history`,
+    };
+  }
+
+  /**
+   * Strict fetch of a *live* record, for the write path. A deleted record is `410 Gone`
+   * (it existed, you can't edit it) — deliberately not `404`, which would wrongly imply it
+   * never existed. A genuinely unknown id is `404`.
+   */
   getOrThrow(id: string): HydrantInspectionRecord {
     const rec = this.readModel.get(id);
-    if (!rec || rec.deleted) throw new NotFoundException('Hydrant inspection not found');
+    if (!rec) throw new NotFoundException('Hydrant inspection not found');
+    if (rec.deleted) throw new GoneException('This hydrant inspection was deleted and can no longer be edited');
     return rec;
   }
 
@@ -119,7 +155,12 @@ export class HydrantInspectionsService implements OnApplicationBootstrap {
 
   /** Apply one committed event to the read model. */
   private project(e: StoredEvent): void {
-    const n = e.normalized as { id: string; data?: Partial<NerisHydrantInspection>; changes?: Partial<NerisHydrantInspection> };
+    const n = e.normalized as {
+      id: string;
+      data?: Partial<NerisHydrantInspection>;
+      changes?: Partial<NerisHydrantInspection>;
+      reason?: string;
+    };
     const ts = e.occurred_at ?? e.received_at;
     if (e.source_type === CREATED) {
       this.readModel.set(n.id, { id: n.id, data: n.data ?? {}, version: 1, deleted: false, createdAt: ts, updatedAt: ts });
@@ -128,7 +169,8 @@ export class HydrantInspectionsService implements OnApplicationBootstrap {
       if (rec) { rec.data = { ...rec.data, ...(n.changes ?? {}) }; rec.version += 1; rec.updatedAt = ts; }
     } else if (e.source_type === DELETED) {
       const rec = this.readModel.get(n.id);
-      if (rec) { rec.deleted = true; rec.version += 1; rec.updatedAt = ts; }
+      // Void, don't erase: keep the row so a lookup can still report it existed (ADR-0007).
+      if (rec) { rec.deleted = true; rec.deletedAt = ts; rec.deletedReason = n.reason; rec.version += 1; rec.updatedAt = ts; }
     }
   }
 }

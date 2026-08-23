@@ -1,0 +1,93 @@
+import 'reflect-metadata';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { InMemoryEventStore } from '../../core/event-store';
+import { EventPublisher } from '../../events/event-publisher';
+import { RecordsService } from './records.service';
+
+describe('RecordsService (generic module engine)', () => {
+  let store: InMemoryEventStore;
+  let events: EventPublisher;
+  let svc: RecordsService;
+  beforeEach(() => {
+    store = new InMemoryEventStore();
+    events = new EventPublisher();
+    svc = new RecordsService(store, events);
+  });
+
+  it('creates/edits/soft-deletes a record with full history, per module', async () => {
+    const rec = await svc.create('fire', { fire_cause: 'electrical', sqft: 1200 });
+    expect(rec.version).toBe(1);
+    const upd = await svc.update('fire', rec.id, { sqft: 1500 });
+    expect(upd.data.sqft).toBe(1500);
+    expect(upd.data.fire_cause).toBe('electrical'); // unchanged field preserved
+    expect(upd.version).toBe(2);
+    await svc.remove('fire', rec.id, undefined, 'entered in error');
+    expect(svc.list('fire')).toHaveLength(0);
+    const t = svc.lookup('fire', rec.id) as { deleted: boolean; reason?: string };
+    expect(t.deleted).toBe(true); // discoverable tombstone, not a 404
+    expect(t.reason).toBe('entered in error');
+    const hist = await svc.history('fire', rec.id);
+    expect(hist.map((h) => h.type)).toEqual(['created', 'updated', 'deleted']);
+  });
+
+  it('keeps modules isolated (a record in one module is invisible to another)', async () => {
+    await svc.create('fire', { a: 1 });
+    await svc.create('community-event', { b: 2 });
+    expect(svc.list('fire')).toHaveLength(1);
+    expect(svc.list('community-event')).toHaveLength(1);
+    expect(svc.list('medical')).toHaveLength(0);
+  });
+
+  it('is tenant-scoped: a department cannot see or read another department\'s records', async () => {
+    const a = await svc.create('fire', { x: 1 }, { departmentId: 'DEPT_A' });
+    await svc.create('fire', { x: 2 }, { departmentId: 'DEPT_B' });
+    expect(a.departmentId).toBe('DEPT_A');
+    expect(svc.list('fire', false, undefined, 'DEPT_A')).toHaveLength(1);
+    expect(svc.list('fire', false, undefined, 'DEPT_B')).toHaveLength(1);
+    // DEPT_B looking up DEPT_A's record: indistinguishable from never-existed
+    expect(() => svc.lookup('fire', a.id, 'DEPT_B')).toThrow(/ever existed/i);
+    expect(svc.lookup('fire', a.id, 'DEPT_A')).toBeTruthy();
+    // and cannot edit it
+    await expect(svc.update('fire', a.id, { x: 9 }, undefined, undefined, 'DEPT_B')).rejects.toThrow(/not found/i);
+  });
+
+  it('rejects a stale edit (optimistic concurrency)', async () => {
+    const rec = await svc.create('medical', { x: 1 });
+    await svc.update('medical', rec.id, { x: 2 }); // now v2
+    await expect(svc.update('medical', rec.id, { x: 3 }, 1)).rejects.toThrow(/version/i);
+  });
+
+  it('links a sub-record to its parent and filters by it, surviving rebuild', async () => {
+    const incident = await svc.create('incident-core', { incident_internal_id: 'RUN-1' });
+    const fireA = await svc.create('fire', { fire_cause: 'electrical' }, { parent: { module: 'incident-core', id: incident.id } });
+    await svc.create('fire', { fire_cause: 'other' }); // unrelated, no parent
+    expect(fireA.parentId).toBe(incident.id);
+    expect(svc.list('fire', false, incident.id)).toHaveLength(1);
+    // rebuild keeps the linkage
+    const svc2 = new RecordsService(store, events);
+    await svc2.onApplicationBootstrap();
+    expect(svc2.list('fire', false, incident.id)).toHaveLength(1);
+    expect(svc2.getOrThrow('fire', fireA.id).parentModule).toBe('incident-core');
+  });
+
+  it('publishes a live event when an incident-core record is created', async () => {
+    const seen: string[] = [];
+    events.live().subscribe((e) => seen.push(e.type));
+    await svc.create('incident-core', { incident_internal_id: 'RUN-9' });
+    await svc.create('fire', { fire_cause: 'x' }); // non-incident: no live event
+    expect(seen).toContain('incident.declared');
+    expect(seen.filter((t) => t === 'incident.declared')).toHaveLength(1);
+  });
+
+  it('rebuilds every module read model from the log on boot', async () => {
+    const a = await svc.create('fire', { n: 1 });
+    await svc.create('weather', { temp: 70 });
+    await svc.update('fire', a.id, { n: 2 });
+    const svc2 = new RecordsService(store, events);
+    await svc2.onApplicationBootstrap();
+    expect(svc2.list('fire')).toHaveLength(1);
+    expect(svc2.list('weather')).toHaveLength(1);
+    expect(svc2.getOrThrow('fire', a.id).data.n).toBe(2);
+    expect(svc2.getOrThrow('fire', a.id).version).toBe(2);
+  });
+});

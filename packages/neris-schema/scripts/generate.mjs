@@ -195,6 +195,43 @@ function main() {
   }
   writeFileSync(join(OUT, 'value-sets.generated.ts'), banner() + vsBlocks.join('\n\n') + '\n');
 
+  // ---- field-value-sets.generated.json (field -> value set, for form dropdowns) ----
+  // A field is value-set-constrained when its `value_set` flag is TRUE; the set it points to
+  // is named in the `format`/`definition` text ("See type_xxx"). Recover that linkage (which
+  // the plain `string` interfaces drop) so the generated screens can render real dropdowns.
+  const vsByBase = new Map(); // base name -> const name
+  const vsVals = new Map();   // const name -> choices[]
+  for (const p of vsFiles.sort()) {
+    const base = basename(p).replace(/\.csv$/, '').toLowerCase();
+    const cname = 'VS_' + base.toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+    if (!vsByBase.has(base)) vsByBase.set(base, cname);
+    if (!vsVals.has(cname)) {
+      const rows = toObjects(readFileSync(p, 'utf8'));
+      vsVals.set(cname, rows.filter((r) => r.value && (!('active' in r) || truthy(r.active))).map((r) => r.value));
+    }
+  }
+  const resolveVs = (f) => {
+    if (!truthy(f.value_set)) return null;
+    const toks = `${f.format || ''} ${f.definition || ''}`.toLowerCase().match(/[a-z0-9_]+/g) || [];
+    for (const t of toks) if (t !== 'type_incident' && vsByBase.has(t)) return vsByBase.get(t);
+    return null;
+  };
+  const fieldValueSets = {};
+  const usedVs = new Set();
+  for (const m of modules) {
+    const seen = new Set();
+    for (const f of m.fields) {
+      if (!f.name || seen.has(f.name)) continue;
+      seen.add(f.name);
+      const vs = resolveVs(f);
+      if (vs) { (fieldValueSets[m.name] = fieldValueSets[m.name] || {})[f.name] = vs; usedVs.add(vs); }
+    }
+  }
+  const valueSets = {};
+  for (const [c, v] of vsVals) if (usedVs.has(c)) valueSets[c] = v;
+  writeFileSync(join(OUT, 'field-value-sets.generated.json'), JSON.stringify({ fieldValueSets, valueSets }));
+  console.log(`Field→value-set map: ${Object.keys(fieldValueSets).length} modules, ${usedVs.size} value sets referenced.`);
+
   // ---- neris-core-fields.generated.ts (incident minimal record) ----
   const incident = modules.find((m) => m.name === 'NerisIncidentCore');
   const coreFields = incident.fields.filter((f) => truthy(f.neris_core)).map((f) => f.name);

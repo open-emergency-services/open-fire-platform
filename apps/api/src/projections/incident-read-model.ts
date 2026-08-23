@@ -30,6 +30,10 @@ export class IncidentReadModel {
     this.repo.set(rec.id, rec);
   }
 
+  remove(id: string): void {
+    this.repo.delete(id);
+  }
+
   clear(): void {
     this.repo.clear();
   }
