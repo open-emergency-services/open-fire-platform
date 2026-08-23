@@ -2,12 +2,11 @@
   "name": "@ofp/neris-schema",
   "version": "0.1.0",
   "description": "TypeScript types + value sets generated from the NERIS data framework",
-  "type": "module",
-  "main": "src/generated/index.ts",
-  "types": "src/generated/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "generate": "node scripts/generate.mjs",
-    "prebuild": "npm run generate"
+    "build": "tsc -p tsconfig.json"
   },
   "license": "AGPL-3.0-or-later"
 }

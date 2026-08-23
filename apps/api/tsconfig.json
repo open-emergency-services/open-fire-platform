@@ -8,11 +8,9 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "strict": true,
-    "outDir": "./dist",
-    "baseUrl": ".",
-    "paths": {
-      "@ofp/neris-schema": ["../../packages/neris-schema/src/generated/index.ts"]
-    }
+    "rootDir": "./src",
+    "outDir": "./dist"
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

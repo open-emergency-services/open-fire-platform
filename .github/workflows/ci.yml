@@ -5,18 +5,46 @@ on:
   pull_request:
 
 jobs:
-  build:
+  build-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+
+      - name: Install workspace deps
+        run: npm install
+
       - name: Clone NERIS framework for codegen
         run: git clone --depth 1 https://github.com/ulfsri/neris-framework
-      - name: Generate NERIS schema
-        run: NERIS_FRAMEWORK_PATH=./neris-framework node packages/neris-schema/scripts/generate.mjs
-      - name: Install
-        run: npm install
+
+      - name: Generate NERIS schema (types + value sets + field→value-set map)
+        run: NERIS_FRAMEWORK_PATH=./neris-framework npm run generate
+
+      - name: Compile the schema package to JS (API imports it at runtime)
+        run: npm run build:schema
+
+      - name: Generate the module screens from the schema
+        run: npm run screens
+
+      - name: Typecheck API (incl. specs)
+        run: npm --prefix apps/api run typecheck
+
+      - name: Test API
+        run: npm --prefix apps/api run test
+
       - name: Build API
         run: npm --prefix apps/api run build
+
+  # Best-effort: prove the container images build (no daemon-run, just docker build).
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image
+        run: docker build -f apps/api/Dockerfile -t ofp-api .
+      - name: Build web image
+        run: docker build -f apps/web/Dockerfile -t ofp-web .
+      - name: Build simulator image
+        run: docker build -f apps/simulator/Dockerfile -t ofp-sim .

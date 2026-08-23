@@ -10,8 +10,12 @@
   ],
   "scripts": {
     "generate": "npm --prefix packages/neris-schema run generate",
+    "build:schema": "npm --prefix packages/neris-schema run build",
+    "screens": "node apps/web/scripts/gen-screens.mjs",
+    "typecheck": "npm --prefix apps/api run typecheck",
+    "test": "npm --prefix apps/api run test",
     "dev": "npm --prefix apps/api run start:dev",
-    "build": "npm --prefix apps/api run build"
+    "build": "npm run build:schema && npm --prefix apps/api run build"
   },
   "packageManager": "pnpm@9.0.0"
 }

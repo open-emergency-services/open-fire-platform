@@ -4,9 +4,10 @@
   "description": "Open Fire Platform — API (Wave 0: NERIS reporting)",
   "license": "AGPL-3.0-or-later",
   "scripts": {
-    "build": "nest build",
-    "start": "nest start",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
     "start:dev": "nest start --watch",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run"
   },
   "dependencies": {
