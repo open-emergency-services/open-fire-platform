@@ -64,7 +64,8 @@
 <header>
   <h1>🔥 Open Fire Platform — Live Incident View</h1>
   <span class="badge">virtual system</span>
-  <a href="hydrant.html" style="color:#4aa3ff;font-size:12px;text-decoration:none;">hydrant inspection →</a>
+  <a href="command.html" style="color:#4aa3ff;font-size:12px;text-decoration:none;">command board →</a>
+  <a href="modules.html" style="color:#4aa3ff;font-size:12px;text-decoration:none;">module screens →</a>
   <div class="spacer"></div>
   <div class="status"><span class="dot" id="dot"></span><span id="statusText">connecting…</span></div>
   <span class="api" id="apiLabel"></span>
@@ -197,6 +198,14 @@
              ' · tg '+ (p.talkgroupId||'') +'</span>', true);
   }
 
+  // An incident-record screen (records/incident-core) declaring an incident appears here live.
+  function onIncident(evt){
+    var p = evt.payload || {}; if (!p.id) return;
+    seedIncident({ id: p.id, internalId: p.address, status: 'reported',
+      data: { address: p.address, incident_type: p.incidentType } });
+    renderIncidents();
+  }
+
   function connect(){
     var es;
     try { es = new EventSource(API + '/alerts/stream'); }
@@ -206,6 +215,7 @@
     es.addEventListener('radio.event', function(m){ try { onRadio(JSON.parse(m.data)); } catch(e){} });
     es.addEventListener('mayday.declared', function(m){ try { onMayday(JSON.parse(m.data)); } catch(e){} });
     es.addEventListener('mayday.unassigned', function(m){ try { onMayday(JSON.parse(m.data)); } catch(e){} });
+    es.addEventListener('incident.declared', function(m){ try { onIncident(JSON.parse(m.data)); } catch(e){} });
     es.addEventListener('ping', function(){ /* heartbeat keeps the connection warm */ });
   }
 

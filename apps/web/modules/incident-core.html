@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Open Fire Platform — Incident record (the run)</title>
+<style>
+  :root{--bg:#0e1116;--panel:#161b22;--panel2:#1c2230;--line:#2a3140;--text:#e6edf3;--muted:#8b98a9;--accent:#4aa3ff;--ok:#3fb950;--warn:#d29922;--bad:#ff3b30;}
+  *{box-sizing:border-box;} body{margin:0;font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);}
+  header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;}
+  header h1{font-size:15px;margin:0;font-weight:600;} header a{color:var(--accent);font-size:12px;text-decoration:none;}
+  .spacer{flex:1;} .api{color:var(--muted);font-size:11px;font-family:ui-monospace,monospace;}
+  main{display:grid;grid-template-columns:400px 1fr;gap:16px;padding:16px;max-width:1200px;margin:0 auto;}
+  @media (max-width:820px){main{grid-template-columns:1fr;}}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 10px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;}
+  label{display:block;font-size:12px;color:var(--muted);margin:9px 0 3px;}
+  input,select,textarea{width:100%;background:#0e131b;border:1px solid var(--line);color:var(--text);border-radius:7px;padding:8px 9px;font:inherit;}
+  textarea{min-height:44px;font-family:ui-monospace,monospace;font-size:12px;}
+  .check{display:flex;align-items:center;gap:8px;margin-top:10px;} .check input{width:auto;} .check label{margin:0;}
+  .desc{font-size:11px;color:#6b7688;margin-top:2px;}
+  button{margin-top:14px;width:100%;background:var(--accent);color:#04122b;border:0;border-radius:8px;padding:10px;font-weight:700;cursor:pointer;}
+  .msg{margin-top:10px;font-size:13px;min-height:18px;} .msg.ok{color:var(--ok);} .msg.err{color:var(--bad);}
+  table{width:100%;border-collapse:collapse;font-size:13px;} th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;}
+  .pill{font-size:10px;padding:1px 7px;border-radius:10px;background:rgba(63,185,80,.14);color:var(--ok);}
+  .empty{color:var(--muted);padding:8px 0;} .fields-note{color:#6b7688;font-size:11px;margin-top:12px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🚨 Incident record (the run)</h1>
+  <a href="../modules.html">← all screens</a>
+  <span class="spacer"></span>
+  <span class="api" id="apiLabel"></span>
+</header>
+<div id="parentBanner" style="display:none;padding:8px 16px;background:#12202e;border-bottom:1px solid var(--line);font-size:13px;color:var(--text);"></div>
+<main>
+  <section class="card">
+    <h2>New record</h2>
+    <form id="form">
+      <label>Incident Neris Id</label>
+      <input name="incident_neris_id" title="Unique identifier in NERIS for the incident. [neris_core]" /><div class="desc">Unique identifier in NERIS for the incident. [neris_core]</div>
+      <label>Incident Internal Id</label>
+      <input name="incident_internal_id" title="Department's internal unique identifier for the incident. [neris_core]" /><div class="desc">Department's internal unique identifier for the incident. [neris_core]</div>
+      <label>Incident Final Type</label>
+      <input name="incident_final_type" title="Disposition or final incident type as assessed on scene. [neris_core]" placeholder="comma-separated" /><div class="desc">Disposition or final incident type as assessed on scene. [neris_core]</div>
+      <label>Incident Final Type Primary</label>
+      <input name="incident_final_type_primary" title="Flag for the primary incident type. Only one type can be `True`. [neris_core]" placeholder="comma-separated" /><div class="desc">Flag for the primary incident type. Only one type can be `True`. [neris_core]</div>
+      <label>Incident Special Modifier <span style="color:#6b7688;font-size:10px;">(ctrl/⌘-click for multiple)</span></label>
+      <select name="incident_special_modifier" multiple size="4" title="Incident modifier(s) that can help describe the magnitude or class of the incident."><option value="ACTIVE_ASSAILANT">ACTIVE_ASSAILANT</option><option value="MCI">MCI</option><option value="FEDERAL_DECLARED_DISASTER">FEDERAL_DECLARED_DISASTER</option><option value="STATE_DECLARED_DISASTER">STATE_DECLARED_DISASTER</option><option value="COUNTY_LOCAL_DECLARED_DISASTER">COUNTY_LOCAL_DECLARED_DISASTER</option><option value="URBAN_CONFLAGRATION">URBAN_CONFLAGRATION</option><option value="VIOLENCE_AGAINST_RESPONDER">VIOLENCE_AGAINST_RESPONDER</option></select><div class="desc">Incident modifier(s) that can help describe the magnitude or class of the incident.</div>
+      <label>Fire</label>
+      <textarea name="fire" title="Specific fields for incident types that include fire type. [neris_core]" placeholder="text or JSON"></textarea><div class="desc">Specific fields for incident types that include fire type. [neris_core]</div>
+      <label>Medical</label>
+      <input name="medical" title="Specific fields for incident types that include medical. [neris_core]" placeholder="comma-separated" /><div class="desc">Specific fields for incident types that include medical. [neris_core]</div>
+      <label>Hazsit</label>
+      <textarea name="hazsit" title="Specific fields for incident types that include hazsit. [neris_core]" placeholder="text or JSON"></textarea><div class="desc">Specific fields for incident types that include hazsit. [neris_core]</div>
+      <label>Emerging Hazard</label>
+      <input name="emerging_hazard" title="Information on emerging hazard(s). Consists of the fields of one or more group from mod_emerging_hazard. [neris_core]" placeholder="comma-separated" /><div class="desc">Information on emerging hazard(s). Consists of the fields of one or more group from mod_emerging_hazard. [neris_core]</div>
+      <label>Tactic Timestamps</label>
+      <textarea name="tactic_timestamps" title="Timestamps for fire tactic employed. [neris_core]" placeholder="text or JSON"></textarea><div class="desc">Timestamps for fire tactic employed. [neris_core]</div>
+      <label>Incident Point</label>
+      <textarea name="incident_point" title="WGS84 latitude and longitude of the incident. If a latitude and longitude are not submitted but a location is, the location geocoding result (if successful) will be used. [neris_core]" placeholder="text or JSON"></textarea><div class="desc">WGS84 latitude and longitude of the incident. If a latitude and longitude are not submitted but a location is, the location geocoding result (if successful) will be used. [neris_core]</div>
+      <label>Incident Polygon</label>
+      <textarea name="incident_polygon" title="WGS84 polygon of the footprint of the incident." placeholder="text or JSON"></textarea><div class="desc">WGS84 polygon of the footprint of the incident.</div>
+      <label>Incident Location</label>
+      <textarea name="incident_location" title="Location, generally an address, of the incident. Consists of the fields of mod_civic_location. [neris_core]" placeholder="text or JSON"></textarea><div class="desc">Location, generally an address, of the incident. Consists of the fields of mod_civic_location. [neris_core]</div>
+      <label>Incident Location Use</label>
+      <textarea name="incident_location_use" title="How the location is being used. Consists of the fields of mod_location_use. [neris_core]" placeholder="text or JSON"></textarea><div class="desc">How the location is being used. Consists of the fields of mod_location_use. [neris_core]</div>
+      <div class="check"><input type="checkbox" name="incident_people_present" title="Whether people were present at the time of the incident. [neris_core]" /><label>Incident People Present</label></div>
+      <label>Incident Displaced Number</label>
+      <input name="incident_displaced_number" type="number" step="any" title="Number of people displaced." /><div class="desc">Number of people displaced.</div>
+      <label>Incident Displaced Cause <span style="color:#6b7688;font-size:10px;">(ctrl/⌘-click for multiple)</span></label>
+      <select name="incident_displaced_cause" multiple size="4" title="Cause for displacement. [neris_core]"><option value="FIRE">FIRE</option><option value="SMOKE">SMOKE</option><option value="WATER">WATER</option><option value="UTILITIES">UTILITIES</option><option value="HAZARDOUS_SITUATION">HAZARDOUS_SITUATION</option><option value="COLLAPSE">COLLAPSE</option><option value="OTHER">OTHER</option></select><div class="desc">Cause for displacement. [neris_core]</div>
+      <label>Exposure</label>
+      <input name="exposure" title="Exposure details. [neris_core]" placeholder="comma-separated" /><div class="desc">Exposure details. [neris_core]</div>
+      <label>Rescue Ff</label>
+      <input name="rescue_ff" title="Firefighter rescue and/or casualty module. Consists of the fields of mod_rescue_ff. [neris_core]" placeholder="comma-separated" /><div class="desc">Firefighter rescue and/or casualty module. Consists of the fields of mod_rescue_ff. [neris_core]</div>
+      <label>Rescue Nonff</label>
+      <input name="rescue_nonff" title="Non firefighter rescue and/or casualty module. Consists of the fields of mod_rescue_civ. [neris_core]" placeholder="comma-separated" /><div class="desc">Non firefighter rescue and/or casualty module. Consists of the fields of mod_rescue_civ. [neris_core]</div>
+      <label>Incident Rescue Animal</label>
+      <input name="incident_rescue_animal" type="number" step="any" title="Total number of animals rescued. [neris_core]" /><div class="desc">Total number of animals rescued. [neris_core]</div>
+      <label>Incident Actions Taken</label>
+      <input name="incident_actions_taken" title="Actions taken by the fire department on the scene of the incident. [neris_core]" placeholder="comma-separated" /><div class="desc">Actions taken by the fire department on the scene of the incident. [neris_core]</div>
+      <label>Incident Noaction</label>
+      <select name="incident_noaction" title="Reason no action taken by the fire department on the scene of the incident. [neris_core]"><option value="">— select —</option><option value="CANCELLED">CANCELLED</option><option value="STAGED_STANDBY">STAGED_STANDBY</option><option value="NO_INCIDENT_FOUND">NO_INCIDENT_FOUND</option></select><div class="desc">Reason no action taken by the fire department on the scene of the incident. [neris_core]</div>
+      <label>Unit Response</label>
+      <input name="unit_response" title="Shared module for unit response information. [neris_core]" placeholder="comma-separated" /><div class="desc">Shared module for unit response information. [neris_core]</div>
+      <label>Risk Reduction</label>
+      <textarea name="risk_reduction" title="Specific fields for alarms, suppression systems, and their performance. [neris_core]" placeholder="text or JSON"></textarea><div class="desc">Specific fields for alarms, suppression systems, and their performance. [neris_core]</div>
+      <label>Incident Aid Direction</label>
+      <select name="incident_aid_direction" title="Whether aid was given or received. [neris_core]"><option value="">— select —</option><option value="GIVEN">GIVEN</option><option value="RECEIVED">RECEIVED</option></select><div class="desc">Whether aid was given or received. [neris_core]</div>
+      <label>Incident Aid Type</label>
+      <select name="incident_aid_type" title="Type of aid given or received. [neris_core]"><option value="">— select —</option><option value="SUPPORT_AID">SUPPORT_AID</option><option value="IN_LIEU_AID">IN_LIEU_AID</option><option value="ACTING_AS_AID">ACTING_AS_AID</option></select><div class="desc">Type of aid given or received. [neris_core]</div>
+      <label>Incident Aid Department Name</label>
+      <input name="incident_aid_department_name" title="Name of the Fire Department to which aid was given/received. [neris_core]" placeholder="comma-separated" /><div class="desc">Name of the Fire Department to which aid was given/received. [neris_core]</div>
+      <label>Incident Aid Nonfd <span style="color:#6b7688;font-size:10px;">(ctrl/⌘-click for multiple)</span></label>
+      <select name="incident_aid_nonfd" multiple size="4" title="Type of non-fire department entities from which aid was received. [neris_core]"><option value="LAW_ENFORCEMENT">LAW_ENFORCEMENT</option><option value="SOCIAL_SERVICES">SOCIAL_SERVICES</option><option value="ANIMAL_SERVICES">ANIMAL_SERVICES</option><option value="HOUSING_SERVICES">HOUSING_SERVICES</option><option value="UTILITIES_PUBLIC_WORKS">UTILITIES_PUBLIC_WORKS</option><option value="REMEDIATION_SERVICES">REMEDIATION_SERVICES</option></select><div class="desc">Type of non-fire department entities from which aid was received. [neris_core]</div>
+      <label>Incident Narrative Impediment</label>
+      <input name="incident_narrative_impediment" title="Description of any obstacles that impacted the incident. [neris_core]" /><div class="desc">Description of any obstacles that impacted the incident. [neris_core]</div>
+      <label>Incident Narrative Outcome</label>
+      <input name="incident_narrative_outcome" title="Description of the final disposition of the incident. [neris_core]" /><div class="desc">Description of the final disposition of the incident. [neris_core]</div>
+      <label>Parcel</label>
+      <textarea name="parcel" title="Characteristics of the parcel at which the incident occurred. Consists of the fields of mod_parcel." placeholder="text or JSON"></textarea><div class="desc">Characteristics of the parcel at which the incident occurred. Consists of the fields of mod_parcel.</div>
+      <label>Weather</label>
+      <textarea name="weather" title="Characteristics of the weather at the location and time of the incident. Consists of the fields of mod_weather." placeholder="text or JSON"></textarea><div class="desc">Characteristics of the weather at the location and time of the incident. Consists of the fields of mod_weather.</div>
+      <button type="submit" id="submitBtn">Save</button>
+      <button type="button" id="cancelBtn" style="display:none;background:#2a3140;color:var(--text);">Cancel edit</button>
+      <div class="msg" id="msg"></div>
+      <div class="fields-note">module <code>incident-core</code> · 33 fields · event-sourced CRUD (ADR-0007)</div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Recorded — Incident record (the run)</h2>
+    <div class="check" style="margin:0 0 8px;"><input type="checkbox" id="showDeleted" /><label>Show deleted (voided)</label></div>
+    <div id="list"><div class="empty">None yet.</div></div>
+  </section>
+</main>
+<script>
+(function(){
+  var MODULE = "incident-core";
+  var FIELDS = [{"n":"incident_neris_id","k":"text"},{"n":"incident_internal_id","k":"text"},{"n":"incident_final_type","k":"array"},{"n":"incident_final_type_primary","k":"array"},{"n":"incident_special_modifier","k":"multiselect","o":["ACTIVE_ASSAILANT","MCI","FEDERAL_DECLARED_DISASTER","STATE_DECLARED_DISASTER","COUNTY_LOCAL_DECLARED_DISASTER","URBAN_CONFLAGRATION","VIOLENCE_AGAINST_RESPONDER"]},{"n":"fire","k":"json"},{"n":"medical","k":"array"},{"n":"hazsit","k":"json"},{"n":"emerging_hazard","k":"array"},{"n":"tactic_timestamps","k":"json"},{"n":"incident_point","k":"json"},{"n":"incident_polygon","k":"json"},{"n":"incident_location","k":"json"},{"n":"incident_location_use","k":"json"},{"n":"incident_people_present","k":"checkbox"},{"n":"incident_displaced_number","k":"number"},{"n":"incident_displaced_cause","k":"multiselect","o":["FIRE","SMOKE","WATER","UTILITIES","HAZARDOUS_SITUATION","COLLAPSE","OTHER"]},{"n":"exposure","k":"array"},{"n":"rescue_ff","k":"array"},{"n":"rescue_nonff","k":"array"},{"n":"incident_rescue_animal","k":"number"},{"n":"incident_actions_taken","k":"array"},{"n":"incident_noaction","k":"select","o":["CANCELLED","STAGED_STANDBY","NO_INCIDENT_FOUND"]},{"n":"unit_response","k":"array"},{"n":"risk_reduction","k":"json"},{"n":"incident_aid_direction","k":"select","o":["GIVEN","RECEIVED"]},{"n":"incident_aid_type","k":"select","o":["SUPPORT_AID","IN_LIEU_AID","ACTING_AS_AID"]},{"n":"incident_aid_department_name","k":"array"},{"n":"incident_aid_nonfd","k":"multiselect","o":["LAW_ENFORCEMENT","SOCIAL_SERVICES","ANIMAL_SERVICES","HOUSING_SERVICES","UTILITIES_PUBLIC_WORKS","REMEDIATION_SERVICES"]},{"n":"incident_narrative_impediment","k":"text"},{"n":"incident_narrative_outcome","k":"text"},{"n":"parcel","k":"json"},{"n":"weather","k":"json"}];
+  var COLS = ["incident_neris_id","incident_internal_id","incident_final_type","incident_final_type_primary","incident_special_modifier"];
+  var CHILDREN = [{"slug":"civic-location","title":"Location (civic)"},{"slug":"location-use","title":"Location use"},{"slug":"fire","title":"Fire details"},{"slug":"medical","title":"Medical"},{"slug":"hazard","title":"Hazardous situation"},{"slug":"emerging-hazard","title":"Emerging hazard"},{"slug":"exposure","title":"Exposures"},{"slug":"rescue-ff","title":"Firefighter rescue / casualty"},{"slug":"rescue-nonff","title":"Civilian rescue / casualty"},{"slug":"risk-reduction","title":"Alarms & suppression performance"},{"slug":"tactic-timestamps","title":"Tactic timestamps"},{"slug":"unit-response","title":"Unit response"},{"slug":"dispatch","title":"Dispatch"},{"slug":"parcel","title":"Parcel"},{"slug":"weather","title":"Weather"}];
+  var params = new URLSearchParams(location.search);
+  var lsApi = (function(){ try { return localStorage.getItem('ofp_api'); } catch(e){ return null; } })();
+  var API = params.get('api') || lsApi || 'http://localhost:3000/api/v1';
+  var apiRaw = params.get('api');
+  var API_Q = apiRaw ? '&api=' + encodeURIComponent(apiRaw) : '';
+  // Optional auth: send a bearer token when one is present (?token= or localStorage 'ofp_token').
+  // Non-breaking in permissive dev; required once the API runs with AUTH_REQUIRED=1.
+  var TOKEN = params.get('token') || (function(){ try { return localStorage.getItem('ofp_token'); } catch(e){ return null; } })();
+  function afetch(u, o){ o = o || {}; var h = o.headers || {}; if (TOKEN) { h = Object.assign({}, h, { authorization: 'Bearer ' + TOKEN }); } o.headers = h; return fetch(u, o); }
+  document.getElementById('apiLabel').textContent = API + '/records/' + MODULE;
+  var form = document.getElementById('form'), msg = document.getElementById('msg');
+  var submitBtn = document.getElementById('submitBtn'), cancelBtn = document.getElementById('cancelBtn');
+  var showDeleted = document.getElementById('showDeleted');
+  var records = [], editing = null;
+
+  // parent context (cross-linking): ?parent=<module>:<id>
+  var pRaw = params.get('parent'), PARENT = null;
+  if (pRaw){ var ix = pRaw.indexOf(':'); if (ix>0) PARENT = { module: pRaw.slice(0,ix), id: pRaw.slice(ix+1) }; }
+  if (PARENT){
+    var pb = document.getElementById('parentBanner'); pb.style.display='block';
+    pb.innerHTML = '↳ attached to <b>'+PARENT.module+'</b> <span style="font-family:ui-monospace,monospace;color:var(--muted);">'+PARENT.id+'</span> · '+
+      '<a href="'+PARENT.module+'.html?'+(apiRaw?('api='+encodeURIComponent(apiRaw)):'')+'" style="color:var(--accent);text-decoration:none;">open parent →</a>';
+  }
+
+  function serialize(){
+    var data = {};
+    FIELDS.forEach(function(f){
+      var elx = form.elements[f.n]; if(!elx) return;
+      if (f.k==='checkbox'){ data[f.n] = elx.checked; return; }
+      if (f.k==='multiselect'){ var sel=Array.prototype.map.call(elx.selectedOptions,function(o){return o.value;}).filter(Boolean); if(sel.length) data[f.n]=sel; return; }
+      var v = elx.value;
+      if (v==='' || v==null) return;
+      if (f.k==='number'){ var num=Number(v); if(!isNaN(num)) data[f.n]=num; }
+      else if (f.k==='array'){ var a=v.split(',').map(function(s){return s.trim();}).filter(Boolean); if(a.length) data[f.n]=a; }
+      else if (f.k==='json'){ try{ data[f.n]=JSON.parse(v); }catch(e){ data[f.n]=v; } }
+      else data[f.n]=v; // text + select
+    });
+    return data;
+  }
+  function fill(rec){
+    var d = rec.data || {};
+    FIELDS.forEach(function(f){
+      var elx = form.elements[f.n]; if(!elx) return;
+      var v = d[f.n];
+      if (f.k==='checkbox'){ elx.checked = !!v; }
+      else if (f.k==='multiselect'){ var arr=Array.isArray(v)?v:(v==null?[]:[v]); Array.prototype.forEach.call(elx.options,function(o){o.selected=arr.indexOf(o.value)>=0;}); }
+      else if (f.k==='array'){ elx.value = Array.isArray(v)? v.join(', ') : (v==null?'':v); }
+      else if (f.k==='json'){ elx.value = (v==null)?'':(typeof v==='object'? JSON.stringify(v) : String(v)); }
+      else { elx.value = (v==null)?'':v; } // text + select
+    });
+  }
+  function resetForm(){ form.reset(); editing=null; submitBtn.textContent='Save'; cancelBtn.style.display='none'; }
+  cancelBtn.addEventListener('click', resetForm);
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var data = serialize(), url, method;
+    if (editing){ url = API+'/records/'+MODULE+'/'+editing.id+'?expectedVersion='+editing.version; method='PATCH'; }
+    else { url = API+'/records/'+MODULE+(PARENT?('?parentModule='+encodeURIComponent(PARENT.module)+'&parentId='+encodeURIComponent(PARENT.id)):''); method='POST'; }
+    afetch(url,{method:method,headers:{'content-type':'application/json'},body:JSON.stringify(data)})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status+(r.status===409?' (someone else edited this — reload)':'')); return r.json(); })
+      .then(function(){ msg.className='msg ok'; msg.textContent = editing?'Updated.':'Saved.'; resetForm(); load(); })
+      .catch(function(err){ msg.className='msg err'; msg.textContent=(editing?'Update':'Save')+' failed: '+err.message; });
+  });
+
+  function startEdit(id){ var rec = records.find(function(r){return r.id===id;}); if(!rec) return;
+    fill(rec); editing={id:id,version:rec.version}; submitBtn.textContent='Update (v'+rec.version+')'; cancelBtn.style.display='block';
+    msg.className='msg'; msg.textContent=''; window.scrollTo(0,0);
+  }
+  function del(id){ var rec = records.find(function(r){return r.id===id;}); if(!rec) return;
+    if(!confirm('Delete this record? (history is kept in the log)')) return;
+    afetch(API+'/records/'+MODULE+'/'+id+'?expectedVersion='+rec.version,{method:'DELETE'})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(){ msg.className='msg ok'; msg.textContent='Deleted.'; if(editing&&editing.id===id) resetForm(); load(); })
+      .catch(function(err){ msg.className='msg err'; msg.textContent='Delete failed: '+err.message; });
+  }
+  function showHistory(id){
+    afetch(API+'/records/'+MODULE+'/'+id+'/history').then(function(r){return r.json();}).then(function(h){
+      var lines=(h||[]).map(function(e){ return '#'+e.seq+'  '+e.type+'  '+(e.at||''); }).join('\n');
+      alert('History for '+id+':\n\n'+lines);
+    }).catch(function(){});
+  }
+  function cell(rec,name){ var v=(rec.data||{})[name];
+    if(v==null) return '—'; if(v===true) return '✓'; if(v===false) return '—';
+    if(Array.isArray(v)) return v.join(', '); if(typeof v==='object') return JSON.stringify(v); return String(v);
+  }
+  function toggleRelated(a){
+    var tr = a.closest('tr'), nx = tr.nextSibling;
+    if (nx && nx.className==='relrow'){ nx.parentNode.removeChild(nx); return; }
+    var id = a.getAttribute('data-rel');
+    var links = CHILDREN.map(function(c){ return '<a href="'+c.slug+'.html?parent='+MODULE+':'+id+API_Q+'" style="color:var(--accent);margin:0 12px 4px 0;white-space:nowrap;display:inline-block;">＋ '+c.title+'</a>'; }).join('');
+    var row = document.createElement('tr'); row.className='relrow';
+    row.innerHTML = '<td colspan="'+(COLS.length+1)+'" style="background:#0e131b;"><div style="padding:6px 2px;color:var(--muted);font-size:12px;">Attach a sub-record → '+links+'</div></td>';
+    tr.parentNode.insertBefore(row, tr.nextSibling);
+  }
+  function load(){
+    var q = []; if (showDeleted.checked) q.push('includeDeleted=1'); if (PARENT) q.push('parentId='+encodeURIComponent(PARENT.id));
+    var url = API+'/records/'+MODULE+(q.length?('?'+q.join('&')):'');
+    afetch(url).then(function(r){return r.json();}).then(function(list){
+      var all = list||[]; records = all.filter(function(r){return !r.deleted;});
+      var box=document.getElementById('list');
+      if(!all.length){ box.innerHTML='<div class="empty">None yet.</div>'; return; }
+      var head = COLS.map(function(c){ return '<th>'+c.replace(/[_-]+/g,' ')+'</th>'; }).join('')+'<th></th>';
+      var rows = all.map(function(rec){
+        if(rec.deleted){ return '<tr style="opacity:.5;"><td colspan="'+(COLS.length)+'"><span class="pill" style="background:rgba(255,59,48,.14);color:var(--bad);">deleted</span> '+(rec.deletedReason||'voided')+'</td>'+
+          '<td><a href="#" data-hist="'+rec.id+'" style="color:var(--muted);">history</a></td></tr>'; }
+        var tds = COLS.map(function(c){ return '<td>'+cell(rec,c)+'</td>'; }).join('');
+        var rel = CHILDREN.length ? ' · <a href="#" data-rel="'+rec.id+'" style="color:var(--ok);">related ▾</a>' : '';
+        return '<tr>'+tds+'<td style="white-space:nowrap;"><a href="#" data-edit="'+rec.id+'" style="color:var(--accent);">edit</a> · '+
+          '<a href="#" data-hist="'+rec.id+'" style="color:var(--muted);">hist</a> · '+
+          '<a href="#" data-del="'+rec.id+'" style="color:var(--bad);">del</a>'+rel+'</td></tr>';
+      }).join('');
+      box.innerHTML='<table><thead><tr>'+head+'</tr></thead><tbody>'+rows+'</tbody></table>';
+      box.querySelectorAll('[data-edit]').forEach(function(a){a.onclick=function(e){e.preventDefault();startEdit(a.getAttribute('data-edit'));};});
+      box.querySelectorAll('[data-del]').forEach(function(a){a.onclick=function(e){e.preventDefault();del(a.getAttribute('data-del'));};});
+      box.querySelectorAll('[data-hist]').forEach(function(a){a.onclick=function(e){e.preventDefault();showHistory(a.getAttribute('data-hist'));};});
+      box.querySelectorAll('[data-rel]').forEach(function(a){a.onclick=function(e){e.preventDefault();toggleRelated(a);};});
+    }).catch(function(){ document.getElementById('list').innerHTML='<div class="empty">API offline — start the server or pass ?api=…</div>'; });
+  }
+  showDeleted.addEventListener('change', load);
+  load();
+})();
+</script>
+</body>
+</html>

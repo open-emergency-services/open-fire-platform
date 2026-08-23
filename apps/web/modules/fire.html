@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Open Fire Platform — Fire details</title>
+<style>
+  :root{--bg:#0e1116;--panel:#161b22;--panel2:#1c2230;--line:#2a3140;--text:#e6edf3;--muted:#8b98a9;--accent:#4aa3ff;--ok:#3fb950;--warn:#d29922;--bad:#ff3b30;}
+  *{box-sizing:border-box;} body{margin:0;font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);}
+  header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;}
+  header h1{font-size:15px;margin:0;font-weight:600;} header a{color:var(--accent);font-size:12px;text-decoration:none;}
+  .spacer{flex:1;} .api{color:var(--muted);font-size:11px;font-family:ui-monospace,monospace;}
+  main{display:grid;grid-template-columns:400px 1fr;gap:16px;padding:16px;max-width:1200px;margin:0 auto;}
+  @media (max-width:820px){main{grid-template-columns:1fr;}}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 10px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;}
+  label{display:block;font-size:12px;color:var(--muted);margin:9px 0 3px;}
+  input,select,textarea{width:100%;background:#0e131b;border:1px solid var(--line);color:var(--text);border-radius:7px;padding:8px 9px;font:inherit;}
+  textarea{min-height:44px;font-family:ui-monospace,monospace;font-size:12px;}
+  .check{display:flex;align-items:center;gap:8px;margin-top:10px;} .check input{width:auto;} .check label{margin:0;}
+  .desc{font-size:11px;color:#6b7688;margin-top:2px;}
+  button{margin-top:14px;width:100%;background:var(--accent);color:#04122b;border:0;border-radius:8px;padding:10px;font-weight:700;cursor:pointer;}
+  .msg{margin-top:10px;font-size:13px;min-height:18px;} .msg.ok{color:var(--ok);} .msg.err{color:var(--bad);}
+  table{width:100%;border-collapse:collapse;font-size:13px;} th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;}
+  .pill{font-size:10px;padding:1px 7px;border-radius:10px;background:rgba(63,185,80,.14);color:var(--ok);}
+  .empty{color:var(--muted);padding:8px 0;} .fields-note{color:#6b7688;font-size:11px;margin-top:12px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🔥 Fire details</h1>
+  <a href="../modules.html">← all screens</a>
+  <span class="spacer"></span>
+  <span class="api" id="apiLabel"></span>
+</header>
+<div id="parentBanner" style="display:none;padding:8px 16px;background:#12202e;border-bottom:1px solid var(--line);font-size:13px;color:var(--text);"></div>
+<main>
+  <section class="card">
+    <h2>New record</h2>
+    <form id="form">
+      <label>Fire Suppression Appliance <span style="color:#6b7688;font-size:10px;">(ctrl/⌘-click for multiple)</span></label>
+      <select name="fire_suppression_appliance" multiple size="4" title="Describes the appliances used for suppression. [neris_core]"><option value="FIRE_EXTINGUISHER">FIRE_EXTINGUISHER</option><option value="BOOSTER_FIRE_HOSE">BOOSTER_FIRE_HOSE</option><option value="SMALL_DIAMETER_FIRE_HOSE">SMALL_DIAMETER_FIRE_HOSE</option><option value="MEDIUM_DIAMETER_FIRE_HOSE">MEDIUM_DIAMETER_FIRE_HOSE</option><option value="GROUND_MONITOR">GROUND_MONITOR</option><option value="MASTER_STREAM">MASTER_STREAM</option><option value="ELEVATED_MASTER_STREAM_STANDPIPE">ELEVATED_MASTER_STREAM_STANDPIPE</option><option value="BUILDING_STANDPIPE">BUILDING_STANDPIPE</option><option value="BUILDING_FDC">BUILDING_FDC</option><option value="AIRATTACK_HELITACK">AIRATTACK_HELITACK</option><option value="OTHER">OTHER</option><option value="NONE">NONE</option></select><div class="desc">Describes the appliances used for suppression. [neris_core]</div>
+      <label>Fire Water Supply</label>
+      <select name="fire_water_supply" title="Describes the type of water supply utilized for the incident. [neris_core]"><option value="">— select —</option><option value="HYDRANT_LESS_500">HYDRANT_LESS_500</option><option value="HYDRANT_GREATER_500">HYDRANT_GREATER_500</option><option value="TANK_WATER">TANK_WATER</option><option value="WATER_TENDER_SHUTTLE">WATER_TENDER_SHUTTLE</option><option value="NURSE_OTHER_APPARATUS">NURSE_OTHER_APPARATUS</option><option value="DRAFT_FROM_STATIC_SOURCE">DRAFT_FROM_STATIC_SOURCE</option><option value="SUPPLY_FROM_FIRE_BOAT">SUPPLY_FROM_FIRE_BOAT</option><option value="FOAM_ADDITIVE">FOAM_ADDITIVE</option></select><div class="desc">Describes the type of water supply utilized for the incident. [neris_core]</div>
+      <label>Fire Investigation Need</label>
+      <select name="fire_investigation_need" title="Assessment by incident commander and/or officer in charge of the incident as to whether the fire necessitated a formal fire investigation. [neris_core]"><option value="">— select —</option><option value="YES">YES</option><option value="NO">NO</option><option value="NOT_EVALUATED">NOT_EVALUATED</option><option value="NOT_APPLICABLE">NOT_APPLICABLE</option><option value="NO_CAUSE_OBVIOUS">NO_CAUSE_OBVIOUS</option><option value="OTHER">OTHER</option></select><div class="desc">Assessment by incident commander and/or officer in charge of the incident as to whether the fire necessitated a formal fire investigation. [neris_core]</div>
+      <label>Fire Investigation Type <span style="color:#6b7688;font-size:10px;">(ctrl/⌘-click for multiple)</span></label>
+      <select name="fire_investigation_type" multiple size="4" title="Categorizes the general type of investigation completed at the structure fire incident. [neris_core]"><option value="INVESTIGATED_ON_SCENE_RESOURCE">INVESTIGATED_ON_SCENE_RESOURCE</option><option value="INVESTIGATED_BY_ARSON_FIRE_INVESTIGATOR">INVESTIGATED_BY_ARSON_FIRE_INVESTIGATOR</option><option value="INVESTIGATED_BY_OUTSIDE_AGENCY">INVESTIGATED_BY_OUTSIDE_AGENCY</option><option value="INVESTIGATED_BY_STATE_FIRE_MARSHAL">INVESTIGATED_BY_STATE_FIRE_MARSHAL</option><option value="INVESTIGATED_BY_INSURANCE">INVESTIGATED_BY_INSURANCE</option><option value="INVESTIGATED_BY_NONFIRE_LAW_ENFORCEMENT">INVESTIGATED_BY_NONFIRE_LAW_ENFORCEMENT</option><option value="INVESTIGATED_BY_OTHER">INVESTIGATED_BY_OTHER</option></select><div class="desc">Categorizes the general type of investigation completed at the structure fire incident. [neris_core]</div>
+      <label>Structure Arrival Conditions</label>
+      <select name="structure_arrival_conditions" title="Fire conditions upon arriving on the scene of the incident. [neris_core]"><option value="">— select —</option><option value="NO_SMOKE_FIRE_SHOWING">NO_SMOKE_FIRE_SHOWING</option><option value="SMOKE_SHOWING">SMOKE_SHOWING</option><option value="SMOKE_FIRE_SHOWING">SMOKE_FIRE_SHOWING</option><option value="STRUCTURE_INVOLVED">STRUCTURE_INVOLVED</option><option value="FIRE_SPREAD_BEYOND_STRUCTURE">FIRE_SPREAD_BEYOND_STRUCTURE</option><option value="FIRE_OUT_UPON_ARRIVAL">FIRE_OUT_UPON_ARRIVAL</option></select><div class="desc">Fire conditions upon arriving on the scene of the incident. [neris_core]</div>
+      <div class="check"><input type="checkbox" name="structure_progression_conditions" title="Whether the fire extended beyond the conditions found upon arrival. [neris_core]" /><label>Structure Progression Conditions</label></div>
+      <label>Structure Damage</label>
+      <select name="structure_damage" title="Rating of damage to the fire building of origin as selected from a list of values. [neris_core]"><option value="">— select —</option><option value="NO_DAMAGE">NO_DAMAGE</option><option value="MINOR_DAMAGE">MINOR_DAMAGE</option><option value="MODERATE_DAMAGE">MODERATE_DAMAGE</option><option value="MAJOR_DAMAGE">MAJOR_DAMAGE</option></select><div class="desc">Rating of damage to the fire building of origin as selected from a list of values. [neris_core]</div>
+      <label>Structure Floor Of Origin</label>
+      <input name="structure_floor_of_origin" type="number" step="any" title="Story above or below ground of fire origin. [neris_core]" /><div class="desc">Story above or below ground of fire origin. [neris_core]</div>
+      <label>Structure Room Of Origin</label>
+      <select name="structure_room_of_origin" title="Room of origin of the fire. [neris_core]"><option value="">— select —</option><option value="ASSEMBLY">ASSEMBLY</option><option value="BATHROOM">BATHROOM</option><option value="BEDROOM">BEDROOM</option><option value="KITCHEN">KITCHEN</option><option value="LIVING_SPACE">LIVING_SPACE</option><option value="HALLWAY_FOYER">HALLWAY_FOYER</option><option value="GARAGE">GARAGE</option><option value="BALCONY_PORCH_DECK">BALCONY_PORCH_DECK</option><option value="BASEMENT">BASEMENT</option><option value="ATTIC">ATTIC</option><option value="OFFICE">OFFICE</option><option value="UTILITY_ROOM">UTILITY_ROOM</option><option value="OTHER">OTHER</option><option value="UNKNOWN">UNKNOWN</option></select><div class="desc">Room of origin of the fire. [neris_core]</div>
+      <label>Structure Fire Cause</label>
+      <select name="structure_fire_cause" title="General categorization of the cause (or likely cause) of the structure fire. [neris_core]"><option value="">— select —</option><option value="OPERATING_EQUIPMENT">OPERATING_EQUIPMENT</option><option value="ELECTRICAL">ELECTRICAL</option><option value="BATTERY_POWER_STORAGE">BATTERY_POWER_STORAGE</option><option value="HEAT_FROM_ANOTHER_OBJECT">HEAT_FROM_ANOTHER_OBJECT</option><option value="EXPLOSIVES_FIREWORKS">EXPLOSIVES_FIREWORKS</option><option value="SMOKING_MATERIALS_ILLICIT_DRUGS">SMOKING_MATERIALS_ILLICIT_DRUGS</option><option value="OPEN_FLAME">OPEN_FLAME</option><option value="COOKING">COOKING</option><option value="CHEMICAL">CHEMICAL</option><option value="ACT_OF_NATURE">ACT_OF_NATURE</option><option value="INCENDIARY">INCENDIARY</option><option value="OTHER_HEAT_SOURCE">OTHER_HEAT_SOURCE</option><option value="UNABLE_TO_BE_DETERMINED">UNABLE_TO_BE_DETERMINED</option></select><div class="desc">General categorization of the cause (or likely cause) of the structure fire. [neris_core]</div>
+      <label>Outside Fire Cause</label>
+      <select name="outside_fire_cause" title="General categorization of the cause (or likely cause) of the outdoor fire."><option value="">— select —</option><option value="NATURAL">NATURAL</option><option value="EQUIPMENT_VEHICLE_USE">EQUIPMENT_VEHICLE_USE</option><option value="SMOKING_MATERIALS_ILLICIT_DRUGS">SMOKING_MATERIALS_ILLICIT_DRUGS</option><option value="RECREATION_CEREMONY">RECREATION_CEREMONY</option><option value="DEBRIS_OPEN_BURNING">DEBRIS_OPEN_BURNING</option><option value="RAILROAD_OPS_MAINTENANCE">RAILROAD_OPS_MAINTENANCE</option><option value="FIREARMS_EXPLOSIVES">FIREARMS_EXPLOSIVES</option><option value="FIREWORKS">FIREWORKS</option><option value="POWER_GEN_TRANS_DIST">POWER_GEN_TRANS_DIST</option><option value="STRUCTURE">STRUCTURE</option><option value="INCENDIARY">INCENDIARY</option><option value="BATTERY_POWER_STORAGE">BATTERY_POWER_STORAGE</option><option value="SPREAD_FROM_CONTROLLED_BURN">SPREAD_FROM_CONTROLLED_BURN</option><option value="UNABLE_TO_BE_DETERMINED">UNABLE_TO_BE_DETERMINED</option></select><div class="desc">General categorization of the cause (or likely cause) of the outdoor fire.</div>
+      <label>Outside Fire Acres Burned</label>
+      <input name="outside_fire_acres_burned" type="number" step="any" title="Estimated number of acres burned during the incident. [neris_core]" /><div class="desc">Estimated number of acres burned during the incident. [neris_core]</div>
+      <button type="submit" id="submitBtn">Save</button>
+      <button type="button" id="cancelBtn" style="display:none;background:#2a3140;color:var(--text);">Cancel edit</button>
+      <div class="msg" id="msg"></div>
+      <div class="fields-note">module <code>fire</code> · 12 fields · event-sourced CRUD (ADR-0007)</div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Recorded — Fire details</h2>
+    <div class="check" style="margin:0 0 8px;"><input type="checkbox" id="showDeleted" /><label>Show deleted (voided)</label></div>
+    <div id="list"><div class="empty">None yet.</div></div>
+  </section>
+</main>
+<script>
+(function(){
+  var MODULE = "fire";
+  var FIELDS = [{"n":"fire_suppression_appliance","k":"multiselect","o":["FIRE_EXTINGUISHER","BOOSTER_FIRE_HOSE","SMALL_DIAMETER_FIRE_HOSE","MEDIUM_DIAMETER_FIRE_HOSE","GROUND_MONITOR","MASTER_STREAM","ELEVATED_MASTER_STREAM_STANDPIPE","BUILDING_STANDPIPE","BUILDING_FDC","AIRATTACK_HELITACK","OTHER","NONE"]},{"n":"fire_water_supply","k":"select","o":["HYDRANT_LESS_500","HYDRANT_GREATER_500","TANK_WATER","WATER_TENDER_SHUTTLE","NURSE_OTHER_APPARATUS","DRAFT_FROM_STATIC_SOURCE","SUPPLY_FROM_FIRE_BOAT","FOAM_ADDITIVE"]},{"n":"fire_investigation_need","k":"select","o":["YES","NO","NOT_EVALUATED","NOT_APPLICABLE","NO_CAUSE_OBVIOUS","OTHER"]},{"n":"fire_investigation_type","k":"multiselect","o":["INVESTIGATED_ON_SCENE_RESOURCE","INVESTIGATED_BY_ARSON_FIRE_INVESTIGATOR","INVESTIGATED_BY_OUTSIDE_AGENCY","INVESTIGATED_BY_STATE_FIRE_MARSHAL","INVESTIGATED_BY_INSURANCE","INVESTIGATED_BY_NONFIRE_LAW_ENFORCEMENT","INVESTIGATED_BY_OTHER"]},{"n":"structure_arrival_conditions","k":"select","o":["NO_SMOKE_FIRE_SHOWING","SMOKE_SHOWING","SMOKE_FIRE_SHOWING","STRUCTURE_INVOLVED","FIRE_SPREAD_BEYOND_STRUCTURE","FIRE_OUT_UPON_ARRIVAL"]},{"n":"structure_progression_conditions","k":"checkbox"},{"n":"structure_damage","k":"select","o":["NO_DAMAGE","MINOR_DAMAGE","MODERATE_DAMAGE","MAJOR_DAMAGE"]},{"n":"structure_floor_of_origin","k":"number"},{"n":"structure_room_of_origin","k":"select","o":["ASSEMBLY","BATHROOM","BEDROOM","KITCHEN","LIVING_SPACE","HALLWAY_FOYER","GARAGE","BALCONY_PORCH_DECK","BASEMENT","ATTIC","OFFICE","UTILITY_ROOM","OTHER","UNKNOWN"]},{"n":"structure_fire_cause","k":"select","o":["OPERATING_EQUIPMENT","ELECTRICAL","BATTERY_POWER_STORAGE","HEAT_FROM_ANOTHER_OBJECT","EXPLOSIVES_FIREWORKS","SMOKING_MATERIALS_ILLICIT_DRUGS","OPEN_FLAME","COOKING","CHEMICAL","ACT_OF_NATURE","INCENDIARY","OTHER_HEAT_SOURCE","UNABLE_TO_BE_DETERMINED"]},{"n":"outside_fire_cause","k":"select","o":["NATURAL","EQUIPMENT_VEHICLE_USE","SMOKING_MATERIALS_ILLICIT_DRUGS","RECREATION_CEREMONY","DEBRIS_OPEN_BURNING","RAILROAD_OPS_MAINTENANCE","FIREARMS_EXPLOSIVES","FIREWORKS","POWER_GEN_TRANS_DIST","STRUCTURE","INCENDIARY","BATTERY_POWER_STORAGE","SPREAD_FROM_CONTROLLED_BURN","UNABLE_TO_BE_DETERMINED"]},{"n":"outside_fire_acres_burned","k":"number"}];
+  var COLS = ["fire_suppression_appliance","fire_water_supply","fire_investigation_need","fire_investigation_type","structure_arrival_conditions"];
+  var CHILDREN = [];
+  var params = new URLSearchParams(location.search);
+  var lsApi = (function(){ try { return localStorage.getItem('ofp_api'); } catch(e){ return null; } })();
+  var API = params.get('api') || lsApi || 'http://localhost:3000/api/v1';
+  var apiRaw = params.get('api');
+  var API_Q = apiRaw ? '&api=' + encodeURIComponent(apiRaw) : '';
+  // Optional auth: send a bearer token when one is present (?token= or localStorage 'ofp_token').
+  // Non-breaking in permissive dev; required once the API runs with AUTH_REQUIRED=1.
+  var TOKEN = params.get('token') || (function(){ try { return localStorage.getItem('ofp_token'); } catch(e){ return null; } })();
+  function afetch(u, o){ o = o || {}; var h = o.headers || {}; if (TOKEN) { h = Object.assign({}, h, { authorization: 'Bearer ' + TOKEN }); } o.headers = h; return fetch(u, o); }
+  document.getElementById('apiLabel').textContent = API + '/records/' + MODULE;
+  var form = document.getElementById('form'), msg = document.getElementById('msg');
+  var submitBtn = document.getElementById('submitBtn'), cancelBtn = document.getElementById('cancelBtn');
+  var showDeleted = document.getElementById('showDeleted');
+  var records = [], editing = null;
+
+  // parent context (cross-linking): ?parent=<module>:<id>
+  var pRaw = params.get('parent'), PARENT = null;
+  if (pRaw){ var ix = pRaw.indexOf(':'); if (ix>0) PARENT = { module: pRaw.slice(0,ix), id: pRaw.slice(ix+1) }; }
+  if (PARENT){
+    var pb = document.getElementById('parentBanner'); pb.style.display='block';
+    pb.innerHTML = '↳ attached to <b>'+PARENT.module+'</b> <span style="font-family:ui-monospace,monospace;color:var(--muted);">'+PARENT.id+'</span> · '+
+      '<a href="'+PARENT.module+'.html?'+(apiRaw?('api='+encodeURIComponent(apiRaw)):'')+'" style="color:var(--accent);text-decoration:none;">open parent →</a>';
+  }
+
+  function serialize(){
+    var data = {};
+    FIELDS.forEach(function(f){
+      var elx = form.elements[f.n]; if(!elx) return;
+      if (f.k==='checkbox'){ data[f.n] = elx.checked; return; }
+      if (f.k==='multiselect'){ var sel=Array.prototype.map.call(elx.selectedOptions,function(o){return o.value;}).filter(Boolean); if(sel.length) data[f.n]=sel; return; }
+      var v = elx.value;
+      if (v==='' || v==null) return;
+      if (f.k==='number'){ var num=Number(v); if(!isNaN(num)) data[f.n]=num; }
+      else if (f.k==='array'){ var a=v.split(',').map(function(s){return s.trim();}).filter(Boolean); if(a.length) data[f.n]=a; }
+      else if (f.k==='json'){ try{ data[f.n]=JSON.parse(v); }catch(e){ data[f.n]=v; } }
+      else data[f.n]=v; // text + select
+    });
+    return data;
+  }
+  function fill(rec){
+    var d = rec.data || {};
+    FIELDS.forEach(function(f){
+      var elx = form.elements[f.n]; if(!elx) return;
+      var v = d[f.n];
+      if (f.k==='checkbox'){ elx.checked = !!v; }
+      else if (f.k==='multiselect'){ var arr=Array.isArray(v)?v:(v==null?[]:[v]); Array.prototype.forEach.call(elx.options,function(o){o.selected=arr.indexOf(o.value)>=0;}); }
+      else if (f.k==='array'){ elx.value = Array.isArray(v)? v.join(', ') : (v==null?'':v); }
+      else if (f.k==='json'){ elx.value = (v==null)?'':(typeof v==='object'? JSON.stringify(v) : String(v)); }
+      else { elx.value = (v==null)?'':v; } // text + select
+    });
+  }
+  function resetForm(){ form.reset(); editing=null; submitBtn.textContent='Save'; cancelBtn.style.display='none'; }
+  cancelBtn.addEventListener('click', resetForm);
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var data = serialize(), url, method;
+    if (editing){ url = API+'/records/'+MODULE+'/'+editing.id+'?expectedVersion='+editing.version; method='PATCH'; }
+    else { url = API+'/records/'+MODULE+(PARENT?('?parentModule='+encodeURIComponent(PARENT.module)+'&parentId='+encodeURIComponent(PARENT.id)):''); method='POST'; }
+    afetch(url,{method:method,headers:{'content-type':'application/json'},body:JSON.stringify(data)})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status+(r.status===409?' (someone else edited this — reload)':'')); return r.json(); })
+      .then(function(){ msg.className='msg ok'; msg.textContent = editing?'Updated.':'Saved.'; resetForm(); load(); })
+      .catch(function(err){ msg.className='msg err'; msg.textContent=(editing?'Update':'Save')+' failed: '+err.message; });
+  });
+
+  function startEdit(id){ var rec = records.find(function(r){return r.id===id;}); if(!rec) return;
+    fill(rec); editing={id:id,version:rec.version}; submitBtn.textContent='Update (v'+rec.version+')'; cancelBtn.style.display='block';
+    msg.className='msg'; msg.textContent=''; window.scrollTo(0,0);
+  }
+  function del(id){ var rec = records.find(function(r){return r.id===id;}); if(!rec) return;
+    if(!confirm('Delete this record? (history is kept in the log)')) return;
+    afetch(API+'/records/'+MODULE+'/'+id+'?expectedVersion='+rec.version,{method:'DELETE'})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(){ msg.className='msg ok'; msg.textContent='Deleted.'; if(editing&&editing.id===id) resetForm(); load(); })
+      .catch(function(err){ msg.className='msg err'; msg.textContent='Delete failed: '+err.message; });
+  }
+  function showHistory(id){
+    afetch(API+'/records/'+MODULE+'/'+id+'/history').then(function(r){return r.json();}).then(function(h){
+      var lines=(h||[]).map(function(e){ return '#'+e.seq+'  '+e.type+'  '+(e.at||''); }).join('\n');
+      alert('History for '+id+':\n\n'+lines);
+    }).catch(function(){});
+  }
+  function cell(rec,name){ var v=(rec.data||{})[name];
+    if(v==null) return '—'; if(v===true) return '✓'; if(v===false) return '—';
+    if(Array.isArray(v)) return v.join(', '); if(typeof v==='object') return JSON.stringify(v); return String(v);
+  }
+  function toggleRelated(a){
+    var tr = a.closest('tr'), nx = tr.nextSibling;
+    if (nx && nx.className==='relrow'){ nx.parentNode.removeChild(nx); return; }
+    var id = a.getAttribute('data-rel');
+    var links = CHILDREN.map(function(c){ return '<a href="'+c.slug+'.html?parent='+MODULE+':'+id+API_Q+'" style="color:var(--accent);margin:0 12px 4px 0;white-space:nowrap;display:inline-block;">＋ '+c.title+'</a>'; }).join('');
+    var row = document.createElement('tr'); row.className='relrow';
+    row.innerHTML = '<td colspan="'+(COLS.length+1)+'" style="background:#0e131b;"><div style="padding:6px 2px;color:var(--muted);font-size:12px;">Attach a sub-record → '+links+'</div></td>';
+    tr.parentNode.insertBefore(row, tr.nextSibling);
+  }
+  function load(){
+    var q = []; if (showDeleted.checked) q.push('includeDeleted=1'); if (PARENT) q.push('parentId='+encodeURIComponent(PARENT.id));
+    var url = API+'/records/'+MODULE+(q.length?('?'+q.join('&')):'');
+    afetch(url).then(function(r){return r.json();}).then(function(list){
+      var all = list||[]; records = all.filter(function(r){return !r.deleted;});
+      var box=document.getElementById('list');
+      if(!all.length){ box.innerHTML='<div class="empty">None yet.</div>'; return; }
+      var head = COLS.map(function(c){ return '<th>'+c.replace(/[_-]+/g,' ')+'</th>'; }).join('')+'<th></th>';
+      var rows = all.map(function(rec){
+        if(rec.deleted){ return '<tr style="opacity:.5;"><td colspan="'+(COLS.length)+'"><span class="pill" style="background:rgba(255,59,48,.14);color:var(--bad);">deleted</span> '+(rec.deletedReason||'voided')+'</td>'+
+          '<td><a href="#" data-hist="'+rec.id+'" style="color:var(--muted);">history</a></td></tr>'; }
+        var tds = COLS.map(function(c){ return '<td>'+cell(rec,c)+'</td>'; }).join('');
+        var rel = CHILDREN.length ? ' · <a href="#" data-rel="'+rec.id+'" style="color:var(--ok);">related ▾</a>' : '';
+        return '<tr>'+tds+'<td style="white-space:nowrap;"><a href="#" data-edit="'+rec.id+'" style="color:var(--accent);">edit</a> · '+
+          '<a href="#" data-hist="'+rec.id+'" style="color:var(--muted);">hist</a> · '+
+          '<a href="#" data-del="'+rec.id+'" style="color:var(--bad);">del</a>'+rel+'</td></tr>';
+      }).join('');
+      box.innerHTML='<table><thead><tr>'+head+'</tr></thead><tbody>'+rows+'</tbody></table>';
+      box.querySelectorAll('[data-edit]').forEach(function(a){a.onclick=function(e){e.preventDefault();startEdit(a.getAttribute('data-edit'));};});
+      box.querySelectorAll('[data-del]').forEach(function(a){a.onclick=function(e){e.preventDefault();del(a.getAttribute('data-del'));};});
+      box.querySelectorAll('[data-hist]').forEach(function(a){a.onclick=function(e){e.preventDefault();showHistory(a.getAttribute('data-hist'));};});
+      box.querySelectorAll('[data-rel]').forEach(function(a){a.onclick=function(e){e.preventDefault();toggleRelated(a);};});
+    }).catch(function(){ document.getElementById('list').innerHTML='<div class="empty">API offline — start the server or pass ?api=…</div>'; });
+  }
+  showDeleted.addEventListener('change', load);
+  load();
+})();
+</script>
+</body>
+</html>

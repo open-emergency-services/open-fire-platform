@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Open Fire Platform — Fire department / stations / units</title>
+<style>
+  :root{--bg:#0e1116;--panel:#161b22;--panel2:#1c2230;--line:#2a3140;--text:#e6edf3;--muted:#8b98a9;--accent:#4aa3ff;--ok:#3fb950;--warn:#d29922;--bad:#ff3b30;}
+  *{box-sizing:border-box;} body{margin:0;font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);}
+  header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;}
+  header h1{font-size:15px;margin:0;font-weight:600;} header a{color:var(--accent);font-size:12px;text-decoration:none;}
+  .spacer{flex:1;} .api{color:var(--muted);font-size:11px;font-family:ui-monospace,monospace;}
+  main{display:grid;grid-template-columns:400px 1fr;gap:16px;padding:16px;max-width:1200px;margin:0 auto;}
+  @media (max-width:820px){main{grid-template-columns:1fr;}}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 10px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;}
+  label{display:block;font-size:12px;color:var(--muted);margin:9px 0 3px;}
+  input,select,textarea{width:100%;background:#0e131b;border:1px solid var(--line);color:var(--text);border-radius:7px;padding:8px 9px;font:inherit;}
+  textarea{min-height:44px;font-family:ui-monospace,monospace;font-size:12px;}
+  .check{display:flex;align-items:center;gap:8px;margin-top:10px;} .check input{width:auto;} .check label{margin:0;}
+  .desc{font-size:11px;color:#6b7688;margin-top:2px;}
+  button{margin-top:14px;width:100%;background:var(--accent);color:#04122b;border:0;border-radius:8px;padding:10px;font-weight:700;cursor:pointer;}
+  .msg{margin-top:10px;font-size:13px;min-height:18px;} .msg.ok{color:var(--ok);} .msg.err{color:var(--bad);}
+  table{width:100%;border-collapse:collapse;font-size:13px;} th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;}
+  .pill{font-size:10px;padding:1px 7px;border-radius:10px;background:rgba(63,185,80,.14);color:var(--ok);}
+  .empty{color:var(--muted);padding:8px 0;} .fields-note{color:#6b7688;font-size:11px;margin-top:12px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏛️ Fire department / stations / units</h1>
+  <a href="../modules.html">← all screens</a>
+  <span class="spacer"></span>
+  <span class="api" id="apiLabel"></span>
+</header>
+<div id="parentBanner" style="display:none;padding:8px 16px;background:#12202e;border-bottom:1px solid var(--line);font-size:13px;color:var(--text);"></div>
+<main>
+  <section class="card">
+    <h2>New record</h2>
+    <form id="form">
+      <label>Fd Neris Id</label>
+      <input name="fd_neris_id" title="Unique identifier for the agency in NERIS.  Entity type plus state and county FIPS plus with random trailing characters. [neris_core]" /><div class="desc">Unique identifier for the agency in NERIS.  Entity type plus state and county FIPS plus with random trailing characters. [neris_core]</div>
+      <label>Fd Id Legacy</label>
+      <input name="fd_id_legacy" title="Legacy FDID for linkage to other data sets." /><div class="desc">Legacy FDID for linkage to other data sets.</div>
+      <label>Fd Name</label>
+      <input name="fd_name" title="Name of the agency. [neris_core]" /><div class="desc">Name of the agency. [neris_core]</div>
+      <label>Fd Parent Name</label>
+      <input name="fd_parent_name" title="Department's parent department's name." /><div class="desc">Department's parent department's name.</div>
+      <label>Fd Child Name</label>
+      <input name="fd_child_name" title="Names of departments which are children of the department." placeholder="comma-separated" /><div class="desc">Names of departments which are children of the department.</div>
+      <label>Fd Aid Name</label>
+      <input name="fd_aid_name" title="Name of department with which the department has an aid relationship." placeholder="comma-separated" /><div class="desc">Name of department with which the department has an aid relationship.</div>
+      <label>Fd Aid Type <span style="color:#6b7688;font-size:10px;">(ctrl/⌘-click for multiple)</span></label>
+      <select name="fd_aid_type" multiple size="4" title="Type of aid."><option value="IS_CHILD_OF">IS_CHILD_OF</option><option value="IS_PARENT_OF">IS_PARENT_OF</option><option value="MUTUALLY_AIDS">MUTUALLY_AIDS</option><option value="IS_MUTUALLY_AIDED_BY">IS_MUTUALLY_AIDED_BY</option><option value="AUTOMATICALLY_AIDS">AUTOMATICALLY_AIDS</option><option value="IS_AUTOMATICALLY_AIDED_BY">IS_AUTOMATICALLY_AIDED_BY</option><option value="CONTRACTUALLY_AIDS">CONTRACTUALLY_AIDS</option><option value="IS_CONTRACTUALLY_AIDED_BY">IS_CONTRACTUALLY_AIDED_BY</option></select><div class="desc">Type of aid.</div>
+      <label>Fd Address 1</label>
+      <input name="fd_address_1" title="Physical address of agency HQ. [neris_core]" /><div class="desc">Physical address of agency HQ. [neris_core]</div>
+      <label>Fd Address 2</label>
+      <input name="fd_address_2" title="Additional address information." /><div class="desc">Additional address information.</div>
+      <label>Fd City</label>
+      <input name="fd_city" title="City in which agency is located. [neris_core]" /><div class="desc">City in which agency is located. [neris_core]</div>
+      <label>Fd State</label>
+      <input name="fd_state" title="State in which agency is located. [neris_core]" /><div class="desc">State in which agency is located. [neris_core]</div>
+      <label>Fd Zip</label>
+      <input name="fd_zip" title="Zip Code in which agency is located. [neris_core]" /><div class="desc">Zip Code in which agency is located. [neris_core]</div>
+      <label>Fd Mailing Address 1</label>
+      <input name="fd_mailing_address_1" title="Agency mailing address. [neris_core]" /><div class="desc">Agency mailing address. [neris_core]</div>
+      <label>Fd Mailing Address 2</label>
+      <input name="fd_mailing_address_2" title="Additional mailing address information." /><div class="desc">Additional mailing address information.</div>
+      <label>Fd Mailing City</label>
+      <input name="fd_mailing_city" title="City of agency mailing address. [neris_core]" /><div class="desc">City of agency mailing address. [neris_core]</div>
+      <label>Fd Mailing State</label>
+      <input name="fd_mailing_state" title="City of agency mailing address. [neris_core]" /><div class="desc">City of agency mailing address. [neris_core]</div>
+      <label>Fd Mailing Zip</label>
+      <input name="fd_mailing_zip" title="Zip Code of agency mailing address. [neris_core]" /><div class="desc">Zip Code of agency mailing address. [neris_core]</div>
+      <label>Fd Point</label>
+      <textarea name="fd_point" title="Coordinates of the agency headquarters. [neris_core]" placeholder="text or JSON"></textarea><div class="desc">Coordinates of the agency headquarters. [neris_core]</div>
+      <label>Fd Website</label>
+      <input name="fd_website" title="Website of the agency." /><div class="desc">Website of the agency.</div>
+      <label>Fd Telephone</label>
+      <input name="fd_telephone" title="Contact phone number of the agency." /><div class="desc">Contact phone number of the agency.</div>
+      <label>Fd Type</label>
+      <select name="fd_type" title="Staffing type of the agency. [neris_core]"><option value="">— select —</option><option value="CAREER">CAREER</option><option value="VOLUNTEER">VOLUNTEER</option><option value="COMBINATION">COMBINATION</option></select><div class="desc">Staffing type of the agency. [neris_core]</div>
+      <label>Fd Entity</label>
+      <select name="fd_entity" title="Category which describes the entity  of the agency. [neris_core]"><option value="">— select —</option><option value="LOCAL">LOCAL</option><option value="CONTRACT">CONTRACT</option><option value="FEDERAL">FEDERAL</option><option value="STATE">STATE</option><option value="OTHER">OTHER</option><option value="PRIVATE">PRIVATE</option><option value="TRANSPORTATION">TRANSPORTATION</option><option value="TRIBAL">TRIBAL</option></select><div class="desc">Category which describes the entity  of the agency. [neris_core]</div>
+      <label>Fd Jurisiction Set</label>
+      <input name="fd_jurisiction_set" title="Multipolygon of the agency's coverage area." placeholder="comma-separated" /><div class="desc">Multipolygon of the agency's coverage area.</div>
+      <label>Fd Jurisdiction Type</label>
+      <select name="fd_jurisdiction_type" title="Type of the agency's jurisdiction."><option value="">— select —</option><option value="JURISDICTION">JURISDICTION</option><option value="BATTALION">BATTALION</option><option value="COUNCIL_DISTRICT">COUNCIL_DISTRICT</option><option value="DISTRICT">DISTRICT</option><option value="DIVISION">DIVISION</option><option value="FIRST_DUE">FIRST_DUE</option><option value="OTHER">OTHER</option></select><div class="desc">Type of the agency's jurisdiction.</div>
+      <label>Fd Primary Division Set</label>
+      <input name="fd_primary_division_set" title="Multipolygon of the district-based supervision of the agency." placeholder="comma-separated" /><div class="desc">Multipolygon of the district-based supervision of the agency.</div>
+      <label>Fd Primary Division Type</label>
+      <select name="fd_primary_division_type" title="Type of the agency's primary geographic division."><option value="">— select —</option><option value="JURISDICTION">JURISDICTION</option><option value="BATTALION">BATTALION</option><option value="COUNCIL_DISTRICT">COUNCIL_DISTRICT</option><option value="DISTRICT">DISTRICT</option><option value="DIVISION">DIVISION</option><option value="FIRST_DUE">FIRST_DUE</option><option value="OTHER">OTHER</option></select><div class="desc">Type of the agency's primary geographic division.</div>
+      <label>Fd Coverage Set</label>
+      <input name="fd_coverage_set" title="Multipolygon of the district-based supervision of the agency." placeholder="comma-separated" /><div class="desc">Multipolygon of the district-based supervision of the agency.</div>
+      <label>Fd Coverage Type</label>
+      <select name="fd_coverage_type" title="Type of the agency's primary geographic division."><option value="">— select —</option><option value="JURISDICTION">JURISDICTION</option><option value="BATTALION">BATTALION</option><option value="COUNCIL_DISTRICT">COUNCIL_DISTRICT</option><option value="DISTRICT">DISTRICT</option><option value="DIVISION">DIVISION</option><option value="FIRST_DUE">FIRST_DUE</option><option value="OTHER">OTHER</option></select><div class="desc">Type of the agency's primary geographic division.</div>
+      <label>Fd Population Protected</label>
+      <input name="fd_population_protected" type="number" step="any" title="Estimated number of people protected within the agency's coverage area. Agency provided. If left blank, calculated if boundary is provided." /><div class="desc">Estimated number of people protected within the agency's coverage area. Agency provided. If left blank, calculated if boundary is provided.</div>
+      <label>Fd Population Protected Source</label>
+      <select name="fd_population_protected_source" title="Data source from which the population count was pulled."><option value="">— select —</option><option value="DEPARTMENT_ENTERED">DEPARTMENT_ENTERED</option><option value="CENSUS_DERIVED">CENSUS_DERIVED</option></select><div class="desc">Data source from which the population count was pulled.</div>
+      <label>Fd Station Count</label>
+      <input name="fd_station_count" type="number" step="any" title="Number of stations in the agency. [neris_core]" /><div class="desc">Number of stations in the agency. [neris_core]</div>
+      <label>Fd Fire Services <span style="color:#6b7688;font-size:10px;">(ctrl/⌘-click for multiple)</span></label>
+      <select name="fd_fire_services" multiple size="4" title="Set of fire department services the agency offers. [neris_core]"><option value="STRUCTURAL_FIREFIGHTING">STRUCTURAL_FIREFIGHTING</option><option value="HIGHRISE_FIREFIGHTING">HIGHRISE_FIREFIGHTING</option><option value="WILDLAND_FIREFIGHTING">WILDLAND_FIREFIGHTING</option><option value="PETROCHEM_FIREFIGHTING">PETROCHEM_FIREFIGHTING</option><option value="ARFF_FIREFIGHTING">ARFF_FIREFIGHTING</option><option value="MARINE_FIREFIGHTING">MARINE_FIREFIGHTING</option><option value="HAZMAT_OPS">HAZMAT_OPS</option><option value="HAZMAT_TECHNICIAN">HAZMAT_TECHNICIAN</option><option value="ROPE_RESCUE">ROPE_RESCUE</option><option value="COLLAPSE_RESCUE">COLLAPSE_RESCUE</option><option value="VEHICLE_RESCUE">VEHICLE_RESCUE</option><option value="ANIMAL_TECHRESCUE">ANIMAL_TECHRESCUE</option><option value="WILDERNESS_SAR">WILDERNESS_SAR</option><option value="TRENCH_RESCUE">TRENCH_RESCUE</option><option value="CONFINED_SPACE">CONFINED_SPACE</option><option value="MACHINERY_RESCUE">MACHINERY_RESCUE</option><option value="CAVE_SAR">CAVE_SAR</option><option value="MINE_SAR">MINE_SAR</option><option value="HELO_SAR">HELO_SAR</option><option value="WATER_SAR">WATER_SAR</option><option value="SWIFTWATER_SAR">SWIFTWATER_SAR</option><option value="DIVE_SAR">DIVE_SAR</option><option value="ICE_RESCUE">ICE_RESCUE</option><option value="SURF_RESCUE">SURF_RESCUE</option><option value="WATERCRAFT_RESCUE">WATERCRAFT_RESCUE</option><option value="FLOOD_SAR">FLOOD_SAR</option><option value="TOWER_SAR">TOWER_SAR</option><option value="REHABILITATION">REHABILITATION</option><option value="RRD_EXISTING">RRD_EXISTING</option><option value="RRD_NEWCONST">RRD_NEWCONST</option><option value="RRD_PUBLICED">RRD_PUBLICED</option><option value="RRD_PLANS">RRD_PLANS</option><option value="CAUSE_ORIGIN">CAUSE_ORIGIN</option><option value="TRAINING_ELF">TRAINING_ELF</option><option value="TRAINING_VETFF">TRAINING_VETFF</option><option value="TRAINING_OD">TRAINING_OD</option><option value="TRAINING_DRIVER">TRAINING_DRIVER</option></select><div class="desc">Set of fire department services the agency offers. [neris_core]</div>
+      <label>Fd Ems Services <span style="color:#6b7688;font-size:10px;">(ctrl/⌘-click for multiple)</span></label>
+      <select name="fd_ems_services" multiple size="4" title="Set of types of EMS services offered. [neris_core]"><option value="NO_MEDICAL">NO_MEDICAL</option><option value="BLS_NO_TRANSPORT">BLS_NO_TRANSPORT</option><option value="ALS_NO_TRANSPORT">ALS_NO_TRANSPORT</option><option value="BLS_TRANSPORT">BLS_TRANSPORT</option><option value="ALS_TRANSPORT">ALS_TRANSPORT</option><option value="AERO_TRANSPORT">AERO_TRANSPORT</option><option value="COMMUNITY_MED">COMMUNITY_MED</option></select><div class="desc">Set of types of EMS services offered. [neris_core]</div>
+      <label>Fd Investigation Services <span style="color:#6b7688;font-size:10px;">(ctrl/⌘-click for multiple)</span></label>
+      <select name="fd_investigation_services" multiple size="4" title="Set of types of investigation services offered. [neris_core]"><option value="COMPANY_LEVEL">COMPANY_LEVEL</option><option value="YOUTH_FIRESETTER">YOUTH_FIRESETTER</option><option value="DEDICATED">DEDICATED</option><option value="LAW_ENFORCEMENT">LAW_ENFORCEMENT</option><option value="K9_DETECT">K9_DETECT</option></select><div class="desc">Set of types of investigation services offered. [neris_core]</div>
+      <div class="check"><input type="checkbox" name="fd_continue_education" title="Whether the agency has a continuing education/training policy. [neris_core]" /><label>Fd Continue Education</label></div>
+      <label>Fd Shift Count</label>
+      <input name="fd_shift_count" type="number" step="any" title="Number of shifts the agency utilizes. [neris_core]" /><div class="desc">Number of shifts the agency utilizes. [neris_core]</div>
+      <label>Fd Shift Duration</label>
+      <input name="fd_shift_duration" type="number" step="any" title="Duration of a shift in hours. [neris_core]" /><div class="desc">Duration of a shift in hours. [neris_core]</div>
+      <label>Fd Shift Signup</label>
+      <input name="fd_shift_signup" type="number" step="any" title="Current shift schedule upon NERIS activation. [neris_core]" /><div class="desc">Current shift schedule upon NERIS activation. [neris_core]</div>
+      <label>Dispatch Center Id</label>
+      <input name="dispatch_center_id" title="4-digit unique identifier for each PSAP dispatch center being requested to respond to an incident. [neris_core]" /><div class="desc">4-digit unique identifier for each PSAP dispatch center being requested to respond to an incident. [neris_core]</div>
+      <label>Dispatch Psap Type</label>
+      <select name="dispatch_psap_type" title="Type of dispatch center being requested. [neris_core]"><option value="">— select —</option><option value="PRIMARY">PRIMARY</option><option value="SECONDARY">SECONDARY</option></select><div class="desc">Type of dispatch center being requested. [neris_core]</div>
+      <label>Dispatch Psap Jurisdiction</label>
+      <select name="dispatch_psap_jurisdiction" title="Aggregation level of dispatch center. [neris_core]"><option value="">— select —</option><option value="SINGLE">SINGLE</option><option value="MULTIPLE">MULTIPLE</option></select><div class="desc">Aggregation level of dispatch center. [neris_core]</div>
+      <label>Dispatch Psap Discipline</label>
+      <select name="dispatch_psap_discipline" title="Whether dispatch is single entity or multiple entity. [neris_core]"><option value="">— select —</option><option value="SINGLE">SINGLE</option><option value="MULTIPLE">MULTIPLE</option></select><div class="desc">Whether dispatch is single entity or multiple entity. [neris_core]</div>
+      <label>Dispatch Psap Capability</label>
+      <select name="dispatch_psap_capability" title="Whether PSAP follows most recent NENA standards. [neris_core]"><option value="">— select —</option><option value="LEGACY">LEGACY</option><option value="NG911">NG911</option></select><div class="desc">Whether PSAP follows most recent NENA standards. [neris_core]</div>
+      <label>Dispatch Cad Software</label>
+      <input name="dispatch_cad_software" title="Manufacturer of the CAD system being used by the agency. [neris_core]" /><div class="desc">Manufacturer of the CAD system being used by the agency. [neris_core]</div>
+      <label>Dispatch Protocol Fire</label>
+      <select name="dispatch_protocol_fire" title="Procedure/protocol followed for triage of emergency fire calls."><option value="">— select —</option><option value="PROQA">PROQA</option><option value="IAED">IAED</option><option value="APCO">APCO</option><option value="OTHER">OTHER</option></select><div class="desc">Procedure/protocol followed for triage of emergency fire calls.</div>
+      <label>Dispatch Protocol Medical</label>
+      <select name="dispatch_protocol_medical" title="Procedure/protocol followed for triage of emergency medical calls."><option value="">— select —</option><option value="PROQA">PROQA</option><option value="IAED">IAED</option><option value="APCO">APCO</option><option value="OTHER">OTHER</option></select><div class="desc">Procedure/protocol followed for triage of emergency medical calls.</div>
+      <div class="check"><input type="checkbox" name="dispatch_avl_usage" title="Describes whether the CAD utilizes AVL technology. [neris_core]" /><label>Dispatch Avl Usage</label></div>
+      <label>Rms Software</label>
+      <input name="rms_software" title="Manufacturer of the RMS Software being used by the agency. [neris_core]" /><div class="desc">Manufacturer of the RMS Software being used by the agency. [neris_core]</div>
+      <label>Station Id</label>
+      <input name="station_id" title="Name of the station. [neris_core]" /><div class="desc">Name of the station. [neris_core]</div>
+      <label>Station Address 1</label>
+      <input name="station_address_1" title="Physical address of station. [neris_core]" /><div class="desc">Physical address of station. [neris_core]</div>
+      <label>Station Address 2</label>
+      <input name="station_address_2" title="Additional address information." /><div class="desc">Additional address information.</div>
+      <label>Station City</label>
+      <input name="station_city" title="City in which station is located. [neris_core]" /><div class="desc">City in which station is located. [neris_core]</div>
+      <label>Station State</label>
+      <input name="station_state" title="State in which station is located. [neris_core]" /><div class="desc">State in which station is located. [neris_core]</div>
+      <label>Station Zip</label>
+      <input name="station_zip" title="Zip Code in which station is located. [neris_core]" /><div class="desc">Zip Code in which station is located. [neris_core]</div>
+      <label>Station Point</label>
+      <input name="station_point" title="WGS84 latitude and longitude of the incident. If a latitude and longitude are not submitted but a location is, the location geocoding result (if successful) will be used. [neris_core]" placeholder="comma-separated" /><div class="desc">WGS84 latitude and longitude of the incident. If a latitude and longitude are not submitted but a location is, the location geocoding result (if successful) will be used. [neris_core]</div>
+      <label>Station Primary Division</label>
+      <input name="station_primary_division" title="Name and id of the primary division region in which the station falls." /><div class="desc">Name and id of the primary division region in which the station falls.</div>
+      <label>Station Coverage</label>
+      <input name="station_coverage" title="Name and id of the coverage area region in which the station falls." placeholder="comma-separated" /><div class="desc">Name and id of the coverage area region in which the station falls.</div>
+      <label>Station Staffing</label>
+      <input name="station_staffing" type="number" step="any" title="Minimum staffing assigned to the station. [neris_core]" /><div class="desc">Minimum staffing assigned to the station. [neris_core]</div>
+      <label>Station Unit Id 1</label>
+      <input name="station_unit_id_1" title="Unit's first designation in CAD. [neris_core]" /><div class="desc">Unit's first designation in CAD. [neris_core]</div>
+      <label>Station Unit Id 2</label>
+      <input name="station_unit_id_2" title="Unit's second designation in CAD. [neris_core]" /><div class="desc">Unit's second designation in CAD. [neris_core]</div>
+      <label>Station Unit Capability</label>
+      <input name="station_unit_capability" title="Type of unit housed at the station. [neris_core]" /><div class="desc">Type of unit housed at the station. [neris_core]</div>
+      <label>Station Unit Staffing</label>
+      <input name="station_unit_staffing" type="number" step="any" title="Minimum staffing required for this unit to be dispatched to an incident. [neris_core]" /><div class="desc">Minimum staffing required for this unit to be dispatched to an incident. [neris_core]</div>
+      <div class="check"><input type="checkbox" name="station_unit_dedicated" title="Whether the unit has dedicated staffing." /><label>Station Unit Dedicated</label></div>
+      <label>Staff Total</label>
+      <input name="staff_total" type="number" step="any" title="Number of total staff within department. [neris_core]" /><div class="desc">Number of total staff within department. [neris_core]</div>
+      <label>Staff Active Ff Career Ft</label>
+      <input name="staff_active_ff_career_ft" type="number" step="any" title="Total number of active full-time career firefighters in agency. [neris_core]" /><div class="desc">Total number of active full-time career firefighters in agency. [neris_core]</div>
+      <label>Staff Active Ff Career Pt</label>
+      <input name="staff_active_ff_career_pt" type="number" step="any" title="Total number of active part-time career firefighters in agency. [neris_core]" /><div class="desc">Total number of active part-time career firefighters in agency. [neris_core]</div>
+      <label>Staff Active Ff Volunteer</label>
+      <input name="staff_active_ff_volunteer" type="number" step="any" title="Total number of active volunteer firefighters in agency. [neris_core]" /><div class="desc">Total number of active volunteer firefighters in agency. [neris_core]</div>
+      <label>Staff Active Ems Only Career Ft</label>
+      <input name="staff_active_ems_only_career_ft" type="number" step="any" title="Total number of active full-time career ems only staff in agency. [neris_core]" /><div class="desc">Total number of active full-time career ems only staff in agency. [neris_core]</div>
+      <label>Staff Active Ems Only Career Pt</label>
+      <input name="staff_active_ems_only_career_pt" type="number" step="any" title="Total number of active part-time career ems only staff in agency. [neris_core]" /><div class="desc">Total number of active part-time career ems only staff in agency. [neris_core]</div>
+      <label>Staff Active Ems Only Volunteer</label>
+      <input name="staff_active_ems_only_volunteer" type="number" step="any" title="Total number of active volunteer ems only staff in agency. [neris_core]" /><div class="desc">Total number of active volunteer ems only staff in agency. [neris_core]</div>
+      <label>Staff Active Civilians Career Ft</label>
+      <input name="staff_active_civilians_career_ft" type="number" step="any" title="Total number of active full-time career civilians in agency. [neris_core]" /><div class="desc">Total number of active full-time career civilians in agency. [neris_core]</div>
+      <label>Staff Active Civilians Career Pt</label>
+      <input name="staff_active_civilians_career_pt" type="number" step="any" title="Total number of active part-time career civilians in agency. [neris_core]" /><div class="desc">Total number of active part-time career civilians in agency. [neris_core]</div>
+      <label>Staff Active Civilians Volunteer</label>
+      <input name="staff_active_civilians_volunteer" type="number" step="any" title="Total number of active volunteer civilians in agency. [neris_core]" /><div class="desc">Total number of active volunteer civilians in agency. [neris_core]</div>
+      <label>Assess Iso Rating</label>
+      <input name="assess_iso_rating" type="number" step="any" title="Current ISO rating (1- 10) of the agency, if applicable." /><div class="desc">Current ISO rating (1- 10) of the agency, if applicable.</div>
+      <div class="check"><input type="checkbox" name="assess_cpse_acredit" title="Whether the agency is accredited through CPSE." /><label>Assess Cpse Acredit</label></div>
+      <div class="check"><input type="checkbox" name="assess_caas_acredit" title="Whether the agency is accredited through CAAS." /><label>Assess Caas Acredit</label></div>
+      <button type="submit" id="submitBtn">Save</button>
+      <button type="button" id="cancelBtn" style="display:none;background:#2a3140;color:var(--text);">Cancel edit</button>
+      <div class="msg" id="msg"></div>
+      <div class="fields-note">module <code>entity-fd</code> · 76 fields · event-sourced CRUD (ADR-0007)</div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Recorded — Fire department / stations / units</h2>
+    <div class="check" style="margin:0 0 8px;"><input type="checkbox" id="showDeleted" /><label>Show deleted (voided)</label></div>
+    <div id="list"><div class="empty">None yet.</div></div>
+  </section>
+</main>
+<script>
+(function(){
+  var MODULE = "entity-fd";
+  var FIELDS = [{"n":"fd_neris_id","k":"text"},{"n":"fd_id_legacy","k":"text"},{"n":"fd_name","k":"text"},{"n":"fd_parent_name","k":"text"},{"n":"fd_child_name","k":"array"},{"n":"fd_aid_name","k":"array"},{"n":"fd_aid_type","k":"multiselect","o":["IS_CHILD_OF","IS_PARENT_OF","MUTUALLY_AIDS","IS_MUTUALLY_AIDED_BY","AUTOMATICALLY_AIDS","IS_AUTOMATICALLY_AIDED_BY","CONTRACTUALLY_AIDS","IS_CONTRACTUALLY_AIDED_BY"]},{"n":"fd_address_1","k":"text"},{"n":"fd_address_2","k":"text"},{"n":"fd_city","k":"text"},{"n":"fd_state","k":"text"},{"n":"fd_zip","k":"text"},{"n":"fd_mailing_address_1","k":"text"},{"n":"fd_mailing_address_2","k":"text"},{"n":"fd_mailing_city","k":"text"},{"n":"fd_mailing_state","k":"text"},{"n":"fd_mailing_zip","k":"text"},{"n":"fd_point","k":"json"},{"n":"fd_website","k":"text"},{"n":"fd_telephone","k":"text"},{"n":"fd_type","k":"select","o":["CAREER","VOLUNTEER","COMBINATION"]},{"n":"fd_entity","k":"select","o":["LOCAL","CONTRACT","FEDERAL","STATE","OTHER","PRIVATE","TRANSPORTATION","TRIBAL"]},{"n":"fd_jurisiction_set","k":"array"},{"n":"fd_jurisdiction_type","k":"select","o":["JURISDICTION","BATTALION","COUNCIL_DISTRICT","DISTRICT","DIVISION","FIRST_DUE","OTHER"]},{"n":"fd_primary_division_set","k":"array"},{"n":"fd_primary_division_type","k":"select","o":["JURISDICTION","BATTALION","COUNCIL_DISTRICT","DISTRICT","DIVISION","FIRST_DUE","OTHER"]},{"n":"fd_coverage_set","k":"array"},{"n":"fd_coverage_type","k":"select","o":["JURISDICTION","BATTALION","COUNCIL_DISTRICT","DISTRICT","DIVISION","FIRST_DUE","OTHER"]},{"n":"fd_population_protected","k":"number"},{"n":"fd_population_protected_source","k":"select","o":["DEPARTMENT_ENTERED","CENSUS_DERIVED"]},{"n":"fd_station_count","k":"number"},{"n":"fd_fire_services","k":"multiselect","o":["STRUCTURAL_FIREFIGHTING","HIGHRISE_FIREFIGHTING","WILDLAND_FIREFIGHTING","PETROCHEM_FIREFIGHTING","ARFF_FIREFIGHTING","MARINE_FIREFIGHTING","HAZMAT_OPS","HAZMAT_TECHNICIAN","ROPE_RESCUE","COLLAPSE_RESCUE","VEHICLE_RESCUE","ANIMAL_TECHRESCUE","WILDERNESS_SAR","TRENCH_RESCUE","CONFINED_SPACE","MACHINERY_RESCUE","CAVE_SAR","MINE_SAR","HELO_SAR","WATER_SAR","SWIFTWATER_SAR","DIVE_SAR","ICE_RESCUE","SURF_RESCUE","WATERCRAFT_RESCUE","FLOOD_SAR","TOWER_SAR","REHABILITATION","RRD_EXISTING","RRD_NEWCONST","RRD_PUBLICED","RRD_PLANS","CAUSE_ORIGIN","TRAINING_ELF","TRAINING_VETFF","TRAINING_OD","TRAINING_DRIVER"]},{"n":"fd_ems_services","k":"multiselect","o":["NO_MEDICAL","BLS_NO_TRANSPORT","ALS_NO_TRANSPORT","BLS_TRANSPORT","ALS_TRANSPORT","AERO_TRANSPORT","COMMUNITY_MED"]},{"n":"fd_investigation_services","k":"multiselect","o":["COMPANY_LEVEL","YOUTH_FIRESETTER","DEDICATED","LAW_ENFORCEMENT","K9_DETECT"]},{"n":"fd_continue_education","k":"checkbox"},{"n":"fd_shift_count","k":"number"},{"n":"fd_shift_duration","k":"number"},{"n":"fd_shift_signup","k":"number"},{"n":"dispatch_center_id","k":"text"},{"n":"dispatch_psap_type","k":"select","o":["PRIMARY","SECONDARY"]},{"n":"dispatch_psap_jurisdiction","k":"select","o":["SINGLE","MULTIPLE"]},{"n":"dispatch_psap_discipline","k":"select","o":["SINGLE","MULTIPLE"]},{"n":"dispatch_psap_capability","k":"select","o":["LEGACY","NG911"]},{"n":"dispatch_cad_software","k":"text"},{"n":"dispatch_protocol_fire","k":"select","o":["PROQA","IAED","APCO","OTHER"]},{"n":"dispatch_protocol_medical","k":"select","o":["PROQA","IAED","APCO","OTHER"]},{"n":"dispatch_avl_usage","k":"checkbox"},{"n":"rms_software","k":"text"},{"n":"station_id","k":"text"},{"n":"station_address_1","k":"text"},{"n":"station_address_2","k":"text"},{"n":"station_city","k":"text"},{"n":"station_state","k":"text"},{"n":"station_zip","k":"text"},{"n":"station_point","k":"array"},{"n":"station_primary_division","k":"text"},{"n":"station_coverage","k":"array"},{"n":"station_staffing","k":"number"},{"n":"station_unit_id_1","k":"text"},{"n":"station_unit_id_2","k":"text"},{"n":"station_unit_capability","k":"text"},{"n":"station_unit_staffing","k":"number"},{"n":"station_unit_dedicated","k":"checkbox"},{"n":"staff_total","k":"number"},{"n":"staff_active_ff_career_ft","k":"number"},{"n":"staff_active_ff_career_pt","k":"number"},{"n":"staff_active_ff_volunteer","k":"number"},{"n":"staff_active_ems_only_career_ft","k":"number"},{"n":"staff_active_ems_only_career_pt","k":"number"},{"n":"staff_active_ems_only_volunteer","k":"number"},{"n":"staff_active_civilians_career_ft","k":"number"},{"n":"staff_active_civilians_career_pt","k":"number"},{"n":"staff_active_civilians_volunteer","k":"number"},{"n":"assess_iso_rating","k":"number"},{"n":"assess_cpse_acredit","k":"checkbox"},{"n":"assess_caas_acredit","k":"checkbox"}];
+  var COLS = ["fd_neris_id","fd_id_legacy","fd_name","fd_parent_name","fd_child_name"];
+  var CHILDREN = [];
+  var params = new URLSearchParams(location.search);
+  var lsApi = (function(){ try { return localStorage.getItem('ofp_api'); } catch(e){ return null; } })();
+  var API = params.get('api') || lsApi || 'http://localhost:3000/api/v1';
+  var apiRaw = params.get('api');
+  var API_Q = apiRaw ? '&api=' + encodeURIComponent(apiRaw) : '';
+  // Optional auth: send a bearer token when one is present (?token= or localStorage 'ofp_token').
+  // Non-breaking in permissive dev; required once the API runs with AUTH_REQUIRED=1.
+  var TOKEN = params.get('token') || (function(){ try { return localStorage.getItem('ofp_token'); } catch(e){ return null; } })();
+  function afetch(u, o){ o = o || {}; var h = o.headers || {}; if (TOKEN) { h = Object.assign({}, h, { authorization: 'Bearer ' + TOKEN }); } o.headers = h; return fetch(u, o); }
+  document.getElementById('apiLabel').textContent = API + '/records/' + MODULE;
+  var form = document.getElementById('form'), msg = document.getElementById('msg');
+  var submitBtn = document.getElementById('submitBtn'), cancelBtn = document.getElementById('cancelBtn');
+  var showDeleted = document.getElementById('showDeleted');
+  var records = [], editing = null;
+
+  // parent context (cross-linking): ?parent=<module>:<id>
+  var pRaw = params.get('parent'), PARENT = null;
+  if (pRaw){ var ix = pRaw.indexOf(':'); if (ix>0) PARENT = { module: pRaw.slice(0,ix), id: pRaw.slice(ix+1) }; }
+  if (PARENT){
+    var pb = document.getElementById('parentBanner'); pb.style.display='block';
+    pb.innerHTML = '↳ attached to <b>'+PARENT.module+'</b> <span style="font-family:ui-monospace,monospace;color:var(--muted);">'+PARENT.id+'</span> · '+
+      '<a href="'+PARENT.module+'.html?'+(apiRaw?('api='+encodeURIComponent(apiRaw)):'')+'" style="color:var(--accent);text-decoration:none;">open parent →</a>';
+  }
+
+  function serialize(){
+    var data = {};
+    FIELDS.forEach(function(f){
+      var elx = form.elements[f.n]; if(!elx) return;
+      if (f.k==='checkbox'){ data[f.n] = elx.checked; return; }
+      if (f.k==='multiselect'){ var sel=Array.prototype.map.call(elx.selectedOptions,function(o){return o.value;}).filter(Boolean); if(sel.length) data[f.n]=sel; return; }
+      var v = elx.value;
+      if (v==='' || v==null) return;
+      if (f.k==='number'){ var num=Number(v); if(!isNaN(num)) data[f.n]=num; }
+      else if (f.k==='array'){ var a=v.split(',').map(function(s){return s.trim();}).filter(Boolean); if(a.length) data[f.n]=a; }
+      else if (f.k==='json'){ try{ data[f.n]=JSON.parse(v); }catch(e){ data[f.n]=v; } }
+      else data[f.n]=v; // text + select
+    });
+    return data;
+  }
+  function fill(rec){
+    var d = rec.data || {};
+    FIELDS.forEach(function(f){
+      var elx = form.elements[f.n]; if(!elx) return;
+      var v = d[f.n];
+      if (f.k==='checkbox'){ elx.checked = !!v; }
+      else if (f.k==='multiselect'){ var arr=Array.isArray(v)?v:(v==null?[]:[v]); Array.prototype.forEach.call(elx.options,function(o){o.selected=arr.indexOf(o.value)>=0;}); }
+      else if (f.k==='array'){ elx.value = Array.isArray(v)? v.join(', ') : (v==null?'':v); }
+      else if (f.k==='json'){ elx.value = (v==null)?'':(typeof v==='object'? JSON.stringify(v) : String(v)); }
+      else { elx.value = (v==null)?'':v; } // text + select
+    });
+  }
+  function resetForm(){ form.reset(); editing=null; submitBtn.textContent='Save'; cancelBtn.style.display='none'; }
+  cancelBtn.addEventListener('click', resetForm);
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var data = serialize(), url, method;
+    if (editing){ url = API+'/records/'+MODULE+'/'+editing.id+'?expectedVersion='+editing.version; method='PATCH'; }
+    else { url = API+'/records/'+MODULE+(PARENT?('?parentModule='+encodeURIComponent(PARENT.module)+'&parentId='+encodeURIComponent(PARENT.id)):''); method='POST'; }
+    afetch(url,{method:method,headers:{'content-type':'application/json'},body:JSON.stringify(data)})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status+(r.status===409?' (someone else edited this — reload)':'')); return r.json(); })
+      .then(function(){ msg.className='msg ok'; msg.textContent = editing?'Updated.':'Saved.'; resetForm(); load(); })
+      .catch(function(err){ msg.className='msg err'; msg.textContent=(editing?'Update':'Save')+' failed: '+err.message; });
+  });
+
+  function startEdit(id){ var rec = records.find(function(r){return r.id===id;}); if(!rec) return;
+    fill(rec); editing={id:id,version:rec.version}; submitBtn.textContent='Update (v'+rec.version+')'; cancelBtn.style.display='block';
+    msg.className='msg'; msg.textContent=''; window.scrollTo(0,0);
+  }
+  function del(id){ var rec = records.find(function(r){return r.id===id;}); if(!rec) return;
+    if(!confirm('Delete this record? (history is kept in the log)')) return;
+    afetch(API+'/records/'+MODULE+'/'+id+'?expectedVersion='+rec.version,{method:'DELETE'})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(){ msg.className='msg ok'; msg.textContent='Deleted.'; if(editing&&editing.id===id) resetForm(); load(); })
+      .catch(function(err){ msg.className='msg err'; msg.textContent='Delete failed: '+err.message; });
+  }
+  function showHistory(id){
+    afetch(API+'/records/'+MODULE+'/'+id+'/history').then(function(r){return r.json();}).then(function(h){
+      var lines=(h||[]).map(function(e){ return '#'+e.seq+'  '+e.type+'  '+(e.at||''); }).join('\n');
+      alert('History for '+id+':\n\n'+lines);
+    }).catch(function(){});
+  }
+  function cell(rec,name){ var v=(rec.data||{})[name];
+    if(v==null) return '—'; if(v===true) return '✓'; if(v===false) return '—';
+    if(Array.isArray(v)) return v.join(', '); if(typeof v==='object') return JSON.stringify(v); return String(v);
+  }
+  function toggleRelated(a){
+    var tr = a.closest('tr'), nx = tr.nextSibling;
+    if (nx && nx.className==='relrow'){ nx.parentNode.removeChild(nx); return; }
+    var id = a.getAttribute('data-rel');
+    var links = CHILDREN.map(function(c){ return '<a href="'+c.slug+'.html?parent='+MODULE+':'+id+API_Q+'" style="color:var(--accent);margin:0 12px 4px 0;white-space:nowrap;display:inline-block;">＋ '+c.title+'</a>'; }).join('');
+    var row = document.createElement('tr'); row.className='relrow';
+    row.innerHTML = '<td colspan="'+(COLS.length+1)+'" style="background:#0e131b;"><div style="padding:6px 2px;color:var(--muted);font-size:12px;">Attach a sub-record → '+links+'</div></td>';
+    tr.parentNode.insertBefore(row, tr.nextSibling);
+  }
+  function load(){
+    var q = []; if (showDeleted.checked) q.push('includeDeleted=1'); if (PARENT) q.push('parentId='+encodeURIComponent(PARENT.id));
+    var url = API+'/records/'+MODULE+(q.length?('?'+q.join('&')):'');
+    afetch(url).then(function(r){return r.json();}).then(function(list){
+      var all = list||[]; records = all.filter(function(r){return !r.deleted;});
+      var box=document.getElementById('list');
+      if(!all.length){ box.innerHTML='<div class="empty">None yet.</div>'; return; }
+      var head = COLS.map(function(c){ return '<th>'+c.replace(/[_-]+/g,' ')+'</th>'; }).join('')+'<th></th>';
+      var rows = all.map(function(rec){
+        if(rec.deleted){ return '<tr style="opacity:.5;"><td colspan="'+(COLS.length)+'"><span class="pill" style="background:rgba(255,59,48,.14);color:var(--bad);">deleted</span> '+(rec.deletedReason||'voided')+'</td>'+
+          '<td><a href="#" data-hist="'+rec.id+'" style="color:var(--muted);">history</a></td></tr>'; }
+        var tds = COLS.map(function(c){ return '<td>'+cell(rec,c)+'</td>'; }).join('');
+        var rel = CHILDREN.length ? ' · <a href="#" data-rel="'+rec.id+'" style="color:var(--ok);">related ▾</a>' : '';
+        return '<tr>'+tds+'<td style="white-space:nowrap;"><a href="#" data-edit="'+rec.id+'" style="color:var(--accent);">edit</a> · '+
+          '<a href="#" data-hist="'+rec.id+'" style="color:var(--muted);">hist</a> · '+
+          '<a href="#" data-del="'+rec.id+'" style="color:var(--bad);">del</a>'+rel+'</td></tr>';
+      }).join('');
+      box.innerHTML='<table><thead><tr>'+head+'</tr></thead><tbody>'+rows+'</tbody></table>';
+      box.querySelectorAll('[data-edit]').forEach(function(a){a.onclick=function(e){e.preventDefault();startEdit(a.getAttribute('data-edit'));};});
+      box.querySelectorAll('[data-del]').forEach(function(a){a.onclick=function(e){e.preventDefault();del(a.getAttribute('data-del'));};});
+      box.querySelectorAll('[data-hist]').forEach(function(a){a.onclick=function(e){e.preventDefault();showHistory(a.getAttribute('data-hist'));};});
+      box.querySelectorAll('[data-rel]').forEach(function(a){a.onclick=function(e){e.preventDefault();toggleRelated(a);};});
+    }).catch(function(){ document.getElementById('list').innerHTML='<div class="empty">API offline — start the server or pass ?api=…</div>'; });
+  }
+  showDeleted.addEventListener('change', load);
+  load();
+})();
+</script>
+</body>
+</html>

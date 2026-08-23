@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Open Fire Platform — Module Screens</title>
+<style>
+  :root{--bg:#0e1116;--panel:#161b22;--panel2:#1c2230;--line:#2a3140;--text:#e6edf3;--muted:#8b98a9;--accent:#4aa3ff;--ok:#3fb950;--warn:#d29922;--bad:#ff3b30;}
+  *{box-sizing:border-box;} body{margin:0;font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);}
+  header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;}
+  header h1{font-size:15px;margin:0;font-weight:600;} header a{color:var(--accent);font-size:12px;text-decoration:none;}
+  .spacer{flex:1;} .api{color:var(--muted);font-size:11px;font-family:ui-monospace,monospace;}
+  main{display:grid;grid-template-columns:400px 1fr;gap:16px;padding:16px;max-width:1200px;margin:0 auto;}
+  @media (max-width:820px){main{grid-template-columns:1fr;}}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 10px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;}
+  label{display:block;font-size:12px;color:var(--muted);margin:9px 0 3px;}
+  input,select,textarea{width:100%;background:#0e131b;border:1px solid var(--line);color:var(--text);border-radius:7px;padding:8px 9px;font:inherit;}
+  textarea{min-height:44px;font-family:ui-monospace,monospace;font-size:12px;}
+  .check{display:flex;align-items:center;gap:8px;margin-top:10px;} .check input{width:auto;} .check label{margin:0;}
+  .desc{font-size:11px;color:#6b7688;margin-top:2px;}
+  button{margin-top:14px;width:100%;background:var(--accent);color:#04122b;border:0;border-radius:8px;padding:10px;font-weight:700;cursor:pointer;}
+  .msg{margin-top:10px;font-size:13px;min-height:18px;} .msg.ok{color:var(--ok);} .msg.err{color:var(--bad);}
+  table{width:100%;border-collapse:collapse;font-size:13px;} th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;}
+  .pill{font-size:10px;padding:1px 7px;border-radius:10px;background:rgba(63,185,80,.14);color:var(--ok);}
+  .empty{color:var(--muted);padding:8px 0;} .fields-note{color:#6b7688;font-size:11px;margin-top:12px;}
+
+  .wrap{max-width:1000px;margin:0 auto;padding:18px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin:8px 0 22px;}
+  .tile{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 12px;text-decoration:none;color:var(--text);}
+  .tile:hover{border-color:var(--accent);} .tile .ic{font-size:20px;} .tile .t{font-size:13px;font-weight:600;} .tile .s{font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;}
+  .cat{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:18px 0 2px;}
+  .lead{color:var(--muted);font-size:13px;max-width:70ch;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🗂️ Module screens</h1>
+  <a href="index.html">← live incident view</a>
+  <a href="command.html" style="margin-left:10px;">command board →</a>
+  <span class="spacer"></span>
+  <span class="api">42 screens</span>
+</header>
+<div style="padding:8px 18px;background:var(--panel);border-bottom:1px solid var(--line);font-size:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+  <span style="color:var(--muted);">🔑 Auth</span>
+  <span id="authState" style="color:var(--muted);">checking…</span>
+  <a href="login.html" style="color:var(--accent);text-decoration:none;">Sign in ↗</a>
+  <span class="spacer" style="flex:1;"></span>
+  <input id="apiBase" placeholder="http://localhost:3000/api/v1" style="width:260px;background:#0e131b;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:5px 8px;font:inherit;font-size:12px;" />
+  <select id="mintRole" style="background:#0e131b;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:5px;font-size:12px;"><option value="responder,officer">responder+officer</option><option value="responder">responder</option><option value="officer">officer</option><option value="admin">admin</option></select>
+  <input id="mintDept" placeholder="DEPT_A" value="DEMO_DEPT" style="width:110px;background:#0e131b;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:5px 8px;font:inherit;font-size:12px;" />
+  <button id="mintBtn" style="width:auto;margin:0;padding:6px 12px;">Mint dev token</button>
+  <button id="clearTok" style="width:auto;margin:0;padding:6px 12px;background:#2a3140;color:var(--text);">Clear</button>
+</div>
+<div class="wrap">
+  <p class="lead">Every NERIS module (plus a few locally-modeled screens) as a data-entry form.
+  All generated from the schema and backed by one event-sourced records API
+  (<code>/api/v1/records/:module</code>) — edits append events, deletes are discoverable
+  tombstones, every record has a full audit trail (ADR-0005 / ADR-0007).</p>
+  <div class="cat">A · Incident documentation</div>
+  <div class="grid">
+    <a class="tile" href="modules/incident-core.html"><span class="ic">🚨</span><span><div class="t">Incident record (the run)</div><div class="s">incident-core</div></span></a>
+    <a class="tile" href="modules/civic-location.html"><span class="ic">📍</span><span><div class="t">Location (civic)</div><div class="s">civic-location</div></span></a>
+    <a class="tile" href="modules/location-use.html"><span class="ic">🏢</span><span><div class="t">Location use</div><div class="s">location-use</div></span></a>
+    <a class="tile" href="modules/fire.html"><span class="ic">🔥</span><span><div class="t">Fire details</div><div class="s">fire</div></span></a>
+    <a class="tile" href="modules/medical.html"><span class="ic">🚑</span><span><div class="t">Medical</div><div class="s">medical</div></span></a>
+    <a class="tile" href="modules/hazard.html"><span class="ic">☣️</span><span><div class="t">Hazardous situation</div><div class="s">hazard</div></span></a>
+    <a class="tile" href="modules/emerging-hazard.html"><span class="ic">⚠️</span><span><div class="t">Emerging hazard</div><div class="s">emerging-hazard</div></span></a>
+    <a class="tile" href="modules/exposure.html"><span class="ic">🏚️</span><span><div class="t">Exposures</div><div class="s">exposure</div></span></a>
+    <a class="tile" href="modules/rescue-ff.html"><span class="ic">🧑‍🚒</span><span><div class="t">Firefighter rescue / casualty</div><div class="s">rescue-ff</div></span></a>
+    <a class="tile" href="modules/rescue-nonff.html"><span class="ic">🧑</span><span><div class="t">Civilian rescue / casualty</div><div class="s">rescue-nonff</div></span></a>
+    <a class="tile" href="modules/risk-reduction.html"><span class="ic">🔔</span><span><div class="t">Alarms &amp; suppression performance</div><div class="s">risk-reduction</div></span></a>
+    <a class="tile" href="modules/tactic-timestamps.html"><span class="ic">⏱️</span><span><div class="t">Tactic timestamps</div><div class="s">tactic-timestamps</div></span></a>
+    <a class="tile" href="modules/unit-response.html"><span class="ic">🚒</span><span><div class="t">Unit response</div><div class="s">unit-response</div></span></a>
+    <a class="tile" href="modules/dispatch.html"><span class="ic">📟</span><span><div class="t">Dispatch</div><div class="s">dispatch</div></span></a>
+    <a class="tile" href="modules/parcel.html"><span class="ic">🗺️</span><span><div class="t">Parcel</div><div class="s">parcel</div></span></a>
+    <a class="tile" href="modules/weather.html"><span class="ic">🌦️</span><span><div class="t">Weather</div><div class="s">weather</div></span></a>
+  </div>
+  <div class="cat">B · Incident analysis</div>
+  <div class="grid">
+    <a class="tile" href="modules/analysis.html"><span class="ic">🔎</span><span><div class="t">Analysis record</div><div class="s">analysis</div></span></a>
+    <a class="tile" href="modules/structure-fire.html"><span class="ic">🏭</span><span><div class="t">Structure fire analysis</div><div class="s">structure-fire</div></span></a>
+    <a class="tile" href="modules/outdoor-fire.html"><span class="ic">🌲</span><span><div class="t">Outdoor / wildland fire</div><div class="s">outdoor-fire</div></span></a>
+    <a class="tile" href="modules/transportation-fire.html"><span class="ic">🚗</span><span><div class="t">Transportation / vehicle fire</div><div class="s">transportation-fire</div></span></a>
+    <a class="tile" href="modules/battery-incident.html"><span class="ic">🔋</span><span><div class="t">Battery / energy-storage incident</div><div class="s">battery-incident</div></span></a>
+    <a class="tile" href="modules/consumer-products.html"><span class="ic">📦</span><span><div class="t">Consumer product involvement</div><div class="s">consumer-products</div></span></a>
+    <a class="tile" href="modules/dins-structure.html"><span class="ic">🧱</span><span><div class="t">Damage inspection (DINS)</div><div class="s">dins-structure</div></span></a>
+    <a class="tile" href="modules/hazsit.html"><span class="ic">⚗️</span><span><div class="t">Hazsit analysis</div><div class="s">hazsit</div></span></a>
+    <a class="tile" href="modules/casualty-ff.html"><span class="ic">🩹</span><span><div class="t">Firefighter casualty analysis</div><div class="s">casualty-ff</div></span></a>
+    <a class="tile" href="modules/casualty-nonff.html"><span class="ic">🩺</span><span><div class="t">Civilian casualty analysis</div><div class="s">casualty-nonff</div></span></a>
+  </div>
+  <div class="cat">C · Community Risk Reduction</div>
+  <div class="grid">
+    <a class="tile" href="modules/crr-core.html"><span class="ic">🤝</span><span><div class="t">CRR record (rollup)</div><div class="s">crr-core</div></span></a>
+    <a class="tile" href="modules/hydrant-inspection.html"><span class="ic">🚰</span><span><div class="t">Hydrant inspection / maintenance</div><div class="s">hydrant-inspection</div></span></a>
+    <a class="tile" href="modules/commercial-inspection.html"><span class="ic">🏬</span><span><div class="t">Commercial inspection</div><div class="s">commercial-inspection</div></span></a>
+    <a class="tile" href="modules/structure-inspection.html"><span class="ic">🏠</span><span><div class="t">Structure inspection</div><div class="s">structure-inspection</div></span></a>
+    <a class="tile" href="modules/outdoor-inspection.html"><span class="ic">🌳</span><span><div class="t">Outdoor inspection</div><div class="s">outdoor-inspection</div></span></a>
+    <a class="tile" href="modules/home-visit.html"><span class="ic">🏡</span><span><div class="t">Home safety visit</div><div class="s">home-visit</div></span></a>
+    <a class="tile" href="modules/community-event.html"><span class="ic">🎪</span><span><div class="t">Community event</div><div class="s">community-event</div></span></a>
+    <a class="tile" href="modules/parcel-data-collection.html"><span class="ic">📐</span><span><div class="t">Parcel data collection</div><div class="s">parcel-data-collection</div></span></a>
+  </div>
+  <div class="cat">D · Personnel health &amp; safety</div>
+  <div class="grid">
+    <a class="tile" href="modules/health-safety.html"><span class="ic">🦺</span><span><div class="t">Health &amp; safety record</div><div class="s">health-safety</div></span></a>
+    <a class="tile" href="modules/hs-incident.html"><span class="ic">🌡️</span><span><div class="t">Response / exposure event</div><div class="s">hs-incident</div></span></a>
+    <a class="tile" href="modules/personnel-injury.html"><span class="ic">🤕</span><span><div class="t">Personnel injury</div><div class="s">personnel-injury</div></span></a>
+    <a class="tile" href="modules/personnel.html"><span class="ic">🧑‍🚒</span><span><div class="t">Personnel record</div><div class="s">personnel</div></span></a>
+  </div>
+  <div class="cat">E · Department &amp; master data</div>
+  <div class="grid">
+    <a class="tile" href="modules/entity-fd.html"><span class="ic">🏛️</span><span><div class="t">Fire department / stations / units</div><div class="s">entity-fd</div></span></a>
+  </div>
+  <div class="cat">F · Non-standard (modeled locally)</div>
+  <div class="grid">
+    <a class="tile" href="modules/scheduling.html"><span class="ic">📆</span><span><div class="t">Scheduling / staffing</div><div class="s">scheduling</div></span></a>
+    <a class="tile" href="modules/training.html"><span class="ic">🎓</span><span><div class="t">Training records</div><div class="s">training</div></span></a>
+    <a class="tile" href="modules/apparatus-check.html"><span class="ic">🧰</span><span><div class="t">Apparatus / equipment checks</div><div class="s">apparatus-check</div></span></a>
+  </div>
+</div>
+<script>
+(function(){
+  function ls(k,v){ try { return v===undefined ? localStorage.getItem(k) : localStorage.setItem(k,v); } catch(e){ return null; } }
+  function del(k){ try { localStorage.removeItem(k); } catch(e){} }
+  var api = document.getElementById('apiBase');
+  api.value = ls('ofp_api') || 'http://localhost:3000/api/v1';
+  api.addEventListener('change', function(){ ls('ofp_api', api.value); });
+  function refresh(){
+    var t = ls('ofp_token');
+    var el = document.getElementById('authState');
+    if (!t){ el.innerHTML = 'no token — screens use the API\'s permissive dev mode'; el.style.color='var(--muted)'; return; }
+    try { var p = JSON.parse(atob(t.split('.')[1])); el.innerHTML = 'token: <b style="color:var(--text)">'+p.dept+'</b> · roles ['+(p.roles||[]).join(', ')+']'; el.style.color='var(--ok)'; }
+    catch(e){ el.textContent='token set'; }
+  }
+  document.getElementById('mintBtn').onclick = function(){
+    var base = api.value.replace(/\/$/,'');
+    fetch(base+'/auth/dev-token',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({ departmentId: document.getElementById('mintDept').value||'DEMO_DEPT', roles: document.getElementById('mintRole').value.split(',') })})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status+' (dev tokens disabled?)'); return r.json(); })
+      .then(function(j){ ls('ofp_token', j.token); refresh(); })
+      .catch(function(e){ document.getElementById('authState').textContent = 'mint failed: '+e.message; });
+  };
+  document.getElementById('clearTok').onclick = function(){ del('ofp_token'); refresh(); };
+  refresh();
+})();
+</script>
+</body>
+</html>

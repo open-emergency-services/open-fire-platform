@@ -81,6 +81,10 @@
 
   <section class="card">
     <h2>Recorded inspections</h2>
+    <div class="check" style="margin:0 0 8px;">
+      <input type="checkbox" id="showDeleted" />
+      <label style="margin:0" for="showDeleted">Show deleted (voided) records</label>
+    </div>
     <div id="list"><div class="empty">None yet.</div></div>
   </section>
 </main>
@@ -165,13 +169,26 @@
       .catch(function(err){ msg.className='msg err'; msg.textContent='Delete failed: ' + err.message; });
   }
 
+  var showDeleted = document.getElementById('showDeleted');
+  showDeleted.addEventListener('change', load);
+
   function load() {
-    fetch(API + '/hydrant-inspections').then(function(r){ return r.json(); }).then(function(list){
-      records = list || [];
+    var url = API + '/hydrant-inspections' + (showDeleted.checked ? '?includeDeleted=1' : '');
+    fetch(url).then(function(r){ return r.json(); }).then(function(list){
+      records = (list || []).filter(function(r){ return !r.deleted; }); // editable set for startEdit/del
+      var all = list || [];
       var box = document.getElementById('list');
-      if (!records.length){ box.innerHTML = '<div class="empty">None yet.</div>'; return; }
-      var rows = records.map(function(rec){
+      if (!all.length){ box.innerHTML = '<div class="empty">None yet.</div>'; return; }
+      var rows = all.map(function(rec){
         var d = rec.data || {};
+        if (rec.deleted) {
+          // Voided row: kept and shown, not vanished — its id still resolves (ADR-0007).
+          return '<tr style="opacity:.55;"><td style="text-decoration:line-through;">'+ (d.hydrant_id||'—') +
+                 '</td><td>'+ (d.inspection_date||'—') +'</td><td><span class="pill bad">deleted</span></td>'+
+                 '<td colspan="2" style="font-style:italic;color:var(--muted);">record voided — '+
+                 (rec.deletedReason ? 'reason: '+rec.deletedReason : 'no reason given') +'</td>'+
+                 '<td style="white-space:nowrap;"><a href="#" data-hist="'+rec.id+'" style="color:var(--muted);">history</a></td></tr>';
+        }
         var op = d.operable === false ? '<span class="pill bad">out of service</span>' : '<span class="pill ok">operable</span>';
         return '<tr><td>'+ (d.hydrant_id||'—') +'</td><td>'+ (d.inspection_date||'—') +'</td><td>'+ op +
                '</td><td>'+ ((d.impediment_type||[]).join(', ')||'—') +'</td><td>'+ (d.notes||'') +
@@ -181,6 +198,14 @@
       box.innerHTML = '<table><thead><tr><th>Hydrant</th><th>Date</th><th>Status</th><th>Impediment</th><th>Notes</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
       box.querySelectorAll('[data-edit]').forEach(function(a){ a.onclick=function(e){e.preventDefault();startEdit(a.getAttribute('data-edit'));}; });
       box.querySelectorAll('[data-del]').forEach(function(a){ a.onclick=function(e){e.preventDefault();del(a.getAttribute('data-del'));}; });
+      box.querySelectorAll('[data-hist]').forEach(function(a){ a.onclick=function(e){e.preventDefault();showHistory(a.getAttribute('data-hist'));}; });
+    }).catch(function(){});
+  }
+
+  function showHistory(id) {
+    fetch(API + '/hydrant-inspections/' + id + '/history').then(function(r){ return r.json(); }).then(function(h){
+      var lines = (h||[]).map(function(e){ return '#'+e.seq+'  '+e.type+'  '+ (e.at||'') + '  by '+ (e.by||'?'); }).join('\n');
+      alert('Audit trail for '+id+':\n\n'+lines);
     }).catch(function(){});
   }
   load();

@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Open Fire Platform — Firefighter rescue / casualty</title>
+<style>
+  :root{--bg:#0e1116;--panel:#161b22;--panel2:#1c2230;--line:#2a3140;--text:#e6edf3;--muted:#8b98a9;--accent:#4aa3ff;--ok:#3fb950;--warn:#d29922;--bad:#ff3b30;}
+  *{box-sizing:border-box;} body{margin:0;font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);}
+  header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;}
+  header h1{font-size:15px;margin:0;font-weight:600;} header a{color:var(--accent);font-size:12px;text-decoration:none;}
+  .spacer{flex:1;} .api{color:var(--muted);font-size:11px;font-family:ui-monospace,monospace;}
+  main{display:grid;grid-template-columns:400px 1fr;gap:16px;padding:16px;max-width:1200px;margin:0 auto;}
+  @media (max-width:820px){main{grid-template-columns:1fr;}}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 10px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;}
+  label{display:block;font-size:12px;color:var(--muted);margin:9px 0 3px;}
+  input,select,textarea{width:100%;background:#0e131b;border:1px solid var(--line);color:var(--text);border-radius:7px;padding:8px 9px;font:inherit;}
+  textarea{min-height:44px;font-family:ui-monospace,monospace;font-size:12px;}
+  .check{display:flex;align-items:center;gap:8px;margin-top:10px;} .check input{width:auto;} .check label{margin:0;}
+  .desc{font-size:11px;color:#6b7688;margin-top:2px;}
+  button{margin-top:14px;width:100%;background:var(--accent);color:#04122b;border:0;border-radius:8px;padding:10px;font-weight:700;cursor:pointer;}
+  .msg{margin-top:10px;font-size:13px;min-height:18px;} .msg.ok{color:var(--ok);} .msg.err{color:var(--bad);}
+  table{width:100%;border-collapse:collapse;font-size:13px;} th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;}
+  .pill{font-size:10px;padding:1px 7px;border-radius:10px;background:rgba(63,185,80,.14);color:var(--ok);}
+  .empty{color:var(--muted);padding:8px 0;} .fields-note{color:#6b7688;font-size:11px;margin-top:12px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🧑‍🚒 Firefighter rescue / casualty</h1>
+  <a href="../modules.html">← all screens</a>
+  <span class="spacer"></span>
+  <span class="api" id="apiLabel"></span>
+</header>
+<div id="parentBanner" style="display:none;padding:8px 16px;background:#12202e;border-bottom:1px solid var(--line);font-size:13px;color:var(--text);"></div>
+<main>
+  <section class="card">
+    <h2>New record</h2>
+    <form id="form">
+      <label>Ff Rescue Birth Month Year</label>
+      <input name="ff_rescue_birth_month_year" title="Date of birth of the person(s) injured or rescued. [neris_core]" /><div class="desc">Date of birth of the person(s) injured or rescued. [neris_core]</div>
+      <label>Ff Rescue Gender</label>
+      <select name="ff_rescue_gender" title="Gender of the person(s) injured or rescued. [neris_core]"><option value="">— select —</option><option value="MALE">MALE</option><option value="FEMALE">FEMALE</option><option value="TRANSGENDER_MALE_FEMALE_TO_MALE">TRANSGENDER_MALE_FEMALE_TO_MALE</option><option value="TRANSGENDER_FEMALE_MALE_TO_FEMALE">TRANSGENDER_FEMALE_MALE_TO_FEMALE</option><option value="OTHER_GENDER_IDENTITY">OTHER_GENDER_IDENTITY</option><option value="UNKNOWN">UNKNOWN</option></select><div class="desc">Gender of the person(s) injured or rescued. [neris_core]</div>
+      <label>Ff Rescue Race</label>
+      <select name="ff_rescue_race" title="Race of the person(s) injured or rescued. [neris_core]"><option value="">— select —</option><option value="AMERICAN_INDIAN_ALASKA_NATIVE">AMERICAN_INDIAN_ALASKA_NATIVE</option><option value="ASIAN">ASIAN</option><option value="BLACK_AFRICAN_AMERICAN">BLACK_AFRICAN_AMERICAN</option><option value="MIDDLE_EASTERN_NORTH_AFRICAN">MIDDLE_EASTERN_NORTH_AFRICAN</option><option value="HISPANIC_LATINO">HISPANIC_LATINO</option><option value="NATIVE_HAWAIIAN_PACIFIC_ISLANDER">NATIVE_HAWAIIAN_PACIFIC_ISLANDER</option><option value="WHITE">WHITE</option><option value="OTHER">OTHER</option><option value="UNKNOWN">UNKNOWN</option></select><div class="desc">Race of the person(s) injured or rescued. [neris_core]</div>
+      <label>Ff Casualty Rank</label>
+      <input name="ff_casualty_rank" title="Rank of firefighter. [neris_core]" /><div class="desc">Rank of firefighter. [neris_core]</div>
+      <label>Ff Casualty Service</label>
+      <input name="ff_casualty_service" type="number" step="any" title="Years of service. [neris_core]" /><div class="desc">Years of service. [neris_core]</div>
+      <label>Ff Rescue Type</label>
+      <select name="ff_rescue_type" title="Whether there was a rescue, non-rescue, assist, or self evacuation. [neris_core]"><option value="">— select —</option><option value="RESCUED_BY_FIREFIGHTER">RESCUED_BY_FIREFIGHTER</option><option value="RESCUED_BY_FF_RIT">RESCUED_BY_FF_RIT</option><option value="RESCUED_BY_NONFIREFIGHTER">RESCUED_BY_NONFIREFIGHTER</option><option value="EVAC_ASSISTED_BY_FIREFIGHTER">EVAC_ASSISTED_BY_FIREFIGHTER</option><option value="SELF_EVACUATION">SELF_EVACUATION</option><option value="NO_RESCUE_NEEDED">NO_RESCUE_NEEDED</option></select><div class="desc">Whether there was a rescue, non-rescue, assist, or self evacuation. [neris_core]</div>
+      <label>Ff Rescue Primary Mode</label>
+      <select name="ff_rescue_primary_mode" title="Primary mode for rescue. [neris_core]"><option value="">— select —</option><option value="REMOVAL_FROM_STRUCTURE">REMOVAL_FROM_STRUCTURE</option><option value="EXTRICATION">EXTRICATION</option><option value="DISENTANGLEMENT">DISENTANGLEMENT</option><option value="RECOVERY">RECOVERY</option><option value="OTHER">OTHER</option></select><div class="desc">Primary mode for rescue. [neris_core]</div>
+      <label>Ff Rescue Actions <span style="color:#6b7688;font-size:10px;">(ctrl/⌘-click for multiple)</span></label>
+      <select name="ff_rescue_actions" multiple size="4" title="Actions taken to support the rescue. [neris_core]"><option value="VENTILATION">VENTILATION</option><option value="HYDRAULIC_TOOL_USE">HYDRAULIC_TOOL_USE</option><option value="UNDERWATER_DIVE">UNDERWATER_DIVE</option><option value="ROPE_RIGGING">ROPE_RIGGING</option><option value="BREAK_BREACH_WALL">BREAK_BREACH_WALL</option><option value="BRACE_WALL_INFRASTRUCTURE">BRACE_WALL_INFRASTRUCTURE</option><option value="TRENCH_SHORING">TRENCH_SHORING</option><option value="SUPPLY_AIR">SUPPLY_AIR</option></select><div class="desc">Actions taken to support the rescue. [neris_core]</div>
+      <label>Ff Rescue Impediment Type <span style="color:#6b7688;font-size:10px;">(ctrl/⌘-click for multiple)</span></label>
+      <select name="ff_rescue_impediment_type" multiple size="4" title="Whether conditions impacted the ability of rescue. [neris_core]"><option value="HOARDING_CONDITIONS">HOARDING_CONDITIONS</option><option value="ACCESS_LIMITATIONS">ACCESS_LIMITATIONS</option><option value="PHYSICAL_MEDICAL_CONDITIONS_PERSON">PHYSICAL_MEDICAL_CONDITIONS_PERSON</option><option value="IMPAIRED_PERSON">IMPAIRED_PERSON</option><option value="OTHER">OTHER</option><option value="NONE">NONE</option></select><div class="desc">Whether conditions impacted the ability of rescue. [neris_core]</div>
+      <div class="check"><input type="checkbox" name="ff_rescue_mayday" title="Whether there was a mayday called to indicate a firefighter needed assistance during the incident. [neris_core]" /><label>Ff Rescue Mayday</label></div>
+      <label>Ff Rescue Mayday Relative Time</label>
+      <select name="ff_rescue_mayday_relative_time" title="Relative to suppression, when the mayday was called. [neris_core]"><option value="">— select —</option><option value="PRE_SUPPRESSION">PRE_SUPPRESSION</option><option value="DURING_SUPPRESSION">DURING_SUPPRESSION</option><option value="POST_SUPPRESSION">POST_SUPPRESSION</option></select><div class="desc">Relative to suppression, when the mayday was called. [neris_core]</div>
+      <div class="check"><input type="checkbox" name="ff_rescue_rit_activated" title="Whether a RIT team was activated following a mayday declaration. [neris_core]" /><label>Ff Rescue Rit Activated</label></div>
+      <label>Ff Rescue Room Type</label>
+      <select name="ff_rescue_room_type" title="Type of room/space from which the occupant was rescued. [neris_core]"><option value="">— select —</option><option value="ASSEMBLY">ASSEMBLY</option><option value="BATHROOM">BATHROOM</option><option value="BEDROOM">BEDROOM</option><option value="KITCHEN">KITCHEN</option><option value="LIVING_SPACE">LIVING_SPACE</option><option value="HALLWAY_FOYER">HALLWAY_FOYER</option><option value="GARAGE">GARAGE</option><option value="BALCONY_PORCH_DECK">BALCONY_PORCH_DECK</option><option value="BASEMENT">BASEMENT</option><option value="ATTIC">ATTIC</option><option value="OFFICE">OFFICE</option><option value="UTILITY_ROOM">UTILITY_ROOM</option><option value="OTHER">OTHER</option><option value="UNKNOWN">UNKNOWN</option></select><div class="desc">Type of room/space from which the occupant was rescued. [neris_core]</div>
+      <label>Ff Rescue Elevation Type</label>
+      <select name="ff_rescue_elevation_type" title="Elevation at which the occupant was found. [neris_core]"><option value="">— select —</option><option value="ON_FLOOR">ON_FLOOR</option><option value="ON_BED">ON_BED</option><option value="ON_FURNITURE">ON_FURNITURE</option><option value="OTHER">OTHER</option></select><div class="desc">Elevation at which the occupant was found. [neris_core]</div>
+      <div class="check"><input type="checkbox" name="ff_rescue_gas_isolation" title="Whether the space was isolated from the flow of heat and/or toxic gases. [neris_core]" /><label>Ff Rescue Gas Isolation</label></div>
+      <label>Ff Rescue Removal Path Type</label>
+      <select name="ff_rescue_removal_path_type" title="How the firefighter was removed from the structure. [neris_core]"><option value="">— select —</option><option value="REMOVAL_ALONG_PRIMARY_PATH">REMOVAL_ALONG_PRIMARY_PATH</option><option value="REMOVAL_ALONG_ALT_PATH">REMOVAL_ALONG_ALT_PATH</option></select><div class="desc">How the firefighter was removed from the structure. [neris_core]</div>
+      <label>Ff Rescue Fire Relative Time</label>
+      <select name="ff_rescue_fire_relative_time" title="Relative to suppression, when the firefighter was removed from the structure. [neris_core]"><option value="">— select —</option><option value="PRE_SUPPRESSION">PRE_SUPPRESSION</option><option value="DURING_SUPPRESSION">DURING_SUPPRESSION</option><option value="POST_SUPPRESSION">POST_SUPPRESSION</option></select><div class="desc">Relative to suppression, when the firefighter was removed from the structure. [neris_core]</div>
+      <label>Ff Casualty Type</label>
+      <select name="ff_casualty_type" title="Whether the person was uninjured, injured nonfatally, injured fatally. [neris_core]"><option value="">— select —</option><option value="UNINJURED">UNINJURED</option><option value="INJURED_NONFATAL">INJURED_NONFATAL</option><option value="INJURED_FATAL">INJURED_FATAL</option></select><div class="desc">Whether the person was uninjured, injured nonfatally, injured fatally. [neris_core]</div>
+      <label>Ff Casualty Classification</label>
+      <select name="ff_casualty_classification" title="Job classification of firefighter. [neris_core]"><option value="">— select —</option><option value="CAREER">CAREER</option><option value="PART_TIME">PART_TIME</option><option value="PAID_ON_CALL">PAID_ON_CALL</option><option value="INDUSTRIAL">INDUSTRIAL</option><option value="VOLUNTEER">VOLUNTEER</option><option value="WILDLAND_FULL_TIME">WILDLAND_FULL_TIME</option><option value="WILDLAND_PART_TIME">WILDLAND_PART_TIME</option><option value="WILDLAND_CONTRACT">WILDLAND_CONTRACT</option></select><div class="desc">Job classification of firefighter. [neris_core]</div>
+      <label>Ff Casualty Linked Unit Id</label>
+      <input name="ff_casualty_linked_unit_id" title="Name of the unit responding to the incident in FD Spec." /><div class="desc">Name of the unit responding to the incident in FD Spec.</div>
+      <label>Ff Casualty Reported Unit Id</label>
+      <input name="ff_casualty_reported_unit_id" title="Name of the unit responding to the incident if neris id not yet in FD Spec." /><div class="desc">Name of the unit responding to the incident if neris id not yet in FD Spec.</div>
+      <label>Ff Casualty Duty Type</label>
+      <select name="ff_casualty_duty_type" title="Duty state of the firefighter at the time of the incident. [neris_core]"><option value="">— select —</option><option value="RESPONDING_TO_EMERGENCY_INCIDENT">RESPONDING_TO_EMERGENCY_INCIDENT</option><option value="WORKING_AT_SCENE_OF_FIRE_INCIDENT">WORKING_AT_SCENE_OF_FIRE_INCIDENT</option><option value="WORKING_AT_SCENE_OF_NONFIRE_INCIDENT">WORKING_AT_SCENE_OF_NONFIRE_INCIDENT</option><option value="RETURNING_FROM_EMERGENCY_INCIDENT">RETURNING_FROM_EMERGENCY_INCIDENT</option><option value="TRAINING">TRAINING</option><option value="AFTER_INCIDENT">AFTER_INCIDENT</option><option value="OTHER_ON_DUTY_INCIDENT">OTHER_ON_DUTY_INCIDENT</option></select><div class="desc">Duty state of the firefighter at the time of the incident. [neris_core]</div>
+      <label>Ff Casualty Cause</label>
+      <select name="ff_casualty_cause" title="Apparent cause of the injury or fatality. [neris_core]"><option value="">— select —</option><option value="CAUGHT_TRAPPED_BY_FIRE_EXPLOSION">CAUGHT_TRAPPED_BY_FIRE_EXPLOSION</option><option value="FALL_JUMP">FALL_JUMP</option><option value="STRESS_OVEREXERTION">STRESS_OVEREXERTION</option><option value="COLLAPSE">COLLAPSE</option><option value="CAUGHT_TRAPPED_BY_OBJECT">CAUGHT_TRAPPED_BY_OBJECT</option><option value="STRUCK_CONTACT_WITH_OBJECT">STRUCK_CONTACT_WITH_OBJECT</option><option value="EXPOSURE">EXPOSURE</option><option value="VEHICLE_COLLISION">VEHICLE_COLLISION</option><option value="OTHER">OTHER</option></select><div class="desc">Apparent cause of the injury or fatality. [neris_core]</div>
+      <label>Ff Casualty Action</label>
+      <input name="ff_casualty_action" title="Action that occurred during the time of the incident. [neris_core]" /><div class="desc">Action that occurred during the time of the incident. [neris_core]</div>
+      <label>Ff Casualty Ppe <span style="color:#6b7688;font-size:10px;">(ctrl/⌘-click for multiple)</span></label>
+      <select name="ff_casualty_ppe" multiple size="4" title="PPE worn during time of incident."><option value="TURNOUT_COAT">TURNOUT_COAT</option><option value="BUNKER_PANTS">BUNKER_PANTS</option><option value="PROTECTIVE_HOOD">PROTECTIVE_HOOD</option><option value="GLOVES">GLOVES</option><option value="FACE_SHIELD_GOGGLES">FACE_SHIELD_GOGGLES</option><option value="HELMET">HELMET</option><option value="SCBA">SCBA</option><option value="PASS_DEVICE">PASS_DEVICE</option><option value="RUBBER_KNEE_BOOTS">RUBBER_KNEE_BOOTS</option><option value="3_4_BOOTS">3_4_BOOTS</option><option value="BRUSH_GEAR">BRUSH_GEAR</option><option value="REFLECTIVE_VEST">REFLECTIVE_VEST</option><option value="OTHER_SPECIAL_EQUIPMENT">OTHER_SPECIAL_EQUIPMENT</option></select><div class="desc">PPE worn during time of incident.</div>
+      <div class="check"><input type="checkbox" name="ff_casualty_incident_command" title="Whether an incident command structure was in place during incident. [neris_core]" /><label>Ff Casualty Incident Command</label></div>
+      <label>Ff Casualty Incident Timeline</label>
+      <select name="ff_casualty_incident_timeline" title="Stage of the incident when the injury occurred. [neris_core]"><option value="">— select —</option><option value="RESPONDING">RESPONDING</option><option value="INITIAL_RESPONSE">INITIAL_RESPONSE</option><option value="CONTINUING_OPERATIONS">CONTINUING_OPERATIONS</option><option value="EXTENDED_OPERATIONS">EXTENDED_OPERATIONS</option><option value="AFTER_CONCLUSION_OF_INCIDENT">AFTER_CONCLUSION_OF_INCIDENT</option><option value="UNKNOWN">UNKNOWN</option></select><div class="desc">Stage of the incident when the injury occurred. [neris_core]</div>
+      <button type="submit" id="submitBtn">Save</button>
+      <button type="button" id="cancelBtn" style="display:none;background:#2a3140;color:var(--text);">Cancel edit</button>
+      <div class="msg" id="msg"></div>
+      <div class="fields-note">module <code>rescue-ff</code> · 27 fields · event-sourced CRUD (ADR-0007)</div>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Recorded — Firefighter rescue / casualty</h2>
+    <div class="check" style="margin:0 0 8px;"><input type="checkbox" id="showDeleted" /><label>Show deleted (voided)</label></div>
+    <div id="list"><div class="empty">None yet.</div></div>
+  </section>
+</main>
+<script>
+(function(){
+  var MODULE = "rescue-ff";
+  var FIELDS = [{"n":"ff_rescue_birth_month_year","k":"text"},{"n":"ff_rescue_gender","k":"select","o":["MALE","FEMALE","TRANSGENDER_MALE_FEMALE_TO_MALE","TRANSGENDER_FEMALE_MALE_TO_FEMALE","OTHER_GENDER_IDENTITY","UNKNOWN"]},{"n":"ff_rescue_race","k":"select","o":["AMERICAN_INDIAN_ALASKA_NATIVE","ASIAN","BLACK_AFRICAN_AMERICAN","MIDDLE_EASTERN_NORTH_AFRICAN","HISPANIC_LATINO","NATIVE_HAWAIIAN_PACIFIC_ISLANDER","WHITE","OTHER","UNKNOWN"]},{"n":"ff_casualty_rank","k":"text"},{"n":"ff_casualty_service","k":"number"},{"n":"ff_rescue_type","k":"select","o":["RESCUED_BY_FIREFIGHTER","RESCUED_BY_FF_RIT","RESCUED_BY_NONFIREFIGHTER","EVAC_ASSISTED_BY_FIREFIGHTER","SELF_EVACUATION","NO_RESCUE_NEEDED"]},{"n":"ff_rescue_primary_mode","k":"select","o":["REMOVAL_FROM_STRUCTURE","EXTRICATION","DISENTANGLEMENT","RECOVERY","OTHER"]},{"n":"ff_rescue_actions","k":"multiselect","o":["VENTILATION","HYDRAULIC_TOOL_USE","UNDERWATER_DIVE","ROPE_RIGGING","BREAK_BREACH_WALL","BRACE_WALL_INFRASTRUCTURE","TRENCH_SHORING","SUPPLY_AIR"]},{"n":"ff_rescue_impediment_type","k":"multiselect","o":["HOARDING_CONDITIONS","ACCESS_LIMITATIONS","PHYSICAL_MEDICAL_CONDITIONS_PERSON","IMPAIRED_PERSON","OTHER","NONE"]},{"n":"ff_rescue_mayday","k":"checkbox"},{"n":"ff_rescue_mayday_relative_time","k":"select","o":["PRE_SUPPRESSION","DURING_SUPPRESSION","POST_SUPPRESSION"]},{"n":"ff_rescue_rit_activated","k":"checkbox"},{"n":"ff_rescue_room_type","k":"select","o":["ASSEMBLY","BATHROOM","BEDROOM","KITCHEN","LIVING_SPACE","HALLWAY_FOYER","GARAGE","BALCONY_PORCH_DECK","BASEMENT","ATTIC","OFFICE","UTILITY_ROOM","OTHER","UNKNOWN"]},{"n":"ff_rescue_elevation_type","k":"select","o":["ON_FLOOR","ON_BED","ON_FURNITURE","OTHER"]},{"n":"ff_rescue_gas_isolation","k":"checkbox"},{"n":"ff_rescue_removal_path_type","k":"select","o":["REMOVAL_ALONG_PRIMARY_PATH","REMOVAL_ALONG_ALT_PATH"]},{"n":"ff_rescue_fire_relative_time","k":"select","o":["PRE_SUPPRESSION","DURING_SUPPRESSION","POST_SUPPRESSION"]},{"n":"ff_casualty_type","k":"select","o":["UNINJURED","INJURED_NONFATAL","INJURED_FATAL"]},{"n":"ff_casualty_classification","k":"select","o":["CAREER","PART_TIME","PAID_ON_CALL","INDUSTRIAL","VOLUNTEER","WILDLAND_FULL_TIME","WILDLAND_PART_TIME","WILDLAND_CONTRACT"]},{"n":"ff_casualty_linked_unit_id","k":"text"},{"n":"ff_casualty_reported_unit_id","k":"text"},{"n":"ff_casualty_duty_type","k":"select","o":["RESPONDING_TO_EMERGENCY_INCIDENT","WORKING_AT_SCENE_OF_FIRE_INCIDENT","WORKING_AT_SCENE_OF_NONFIRE_INCIDENT","RETURNING_FROM_EMERGENCY_INCIDENT","TRAINING","AFTER_INCIDENT","OTHER_ON_DUTY_INCIDENT"]},{"n":"ff_casualty_cause","k":"select","o":["CAUGHT_TRAPPED_BY_FIRE_EXPLOSION","FALL_JUMP","STRESS_OVEREXERTION","COLLAPSE","CAUGHT_TRAPPED_BY_OBJECT","STRUCK_CONTACT_WITH_OBJECT","EXPOSURE","VEHICLE_COLLISION","OTHER"]},{"n":"ff_casualty_action","k":"text"},{"n":"ff_casualty_ppe","k":"multiselect","o":["TURNOUT_COAT","BUNKER_PANTS","PROTECTIVE_HOOD","GLOVES","FACE_SHIELD_GOGGLES","HELMET","SCBA","PASS_DEVICE","RUBBER_KNEE_BOOTS","3_4_BOOTS","BRUSH_GEAR","REFLECTIVE_VEST","OTHER_SPECIAL_EQUIPMENT"]},{"n":"ff_casualty_incident_command","k":"checkbox"},{"n":"ff_casualty_incident_timeline","k":"select","o":["RESPONDING","INITIAL_RESPONSE","CONTINUING_OPERATIONS","EXTENDED_OPERATIONS","AFTER_CONCLUSION_OF_INCIDENT","UNKNOWN"]}];
+  var COLS = ["ff_rescue_birth_month_year","ff_rescue_gender","ff_rescue_race","ff_casualty_rank","ff_casualty_service"];
+  var CHILDREN = [];
+  var params = new URLSearchParams(location.search);
+  var lsApi = (function(){ try { return localStorage.getItem('ofp_api'); } catch(e){ return null; } })();
+  var API = params.get('api') || lsApi || 'http://localhost:3000/api/v1';
+  var apiRaw = params.get('api');
+  var API_Q = apiRaw ? '&api=' + encodeURIComponent(apiRaw) : '';
+  // Optional auth: send a bearer token when one is present (?token= or localStorage 'ofp_token').
+  // Non-breaking in permissive dev; required once the API runs with AUTH_REQUIRED=1.
+  var TOKEN = params.get('token') || (function(){ try { return localStorage.getItem('ofp_token'); } catch(e){ return null; } })();
+  function afetch(u, o){ o = o || {}; var h = o.headers || {}; if (TOKEN) { h = Object.assign({}, h, { authorization: 'Bearer ' + TOKEN }); } o.headers = h; return fetch(u, o); }
+  document.getElementById('apiLabel').textContent = API + '/records/' + MODULE;
+  var form = document.getElementById('form'), msg = document.getElementById('msg');
+  var submitBtn = document.getElementById('submitBtn'), cancelBtn = document.getElementById('cancelBtn');
+  var showDeleted = document.getElementById('showDeleted');
+  var records = [], editing = null;
+
+  // parent context (cross-linking): ?parent=<module>:<id>
+  var pRaw = params.get('parent'), PARENT = null;
+  if (pRaw){ var ix = pRaw.indexOf(':'); if (ix>0) PARENT = { module: pRaw.slice(0,ix), id: pRaw.slice(ix+1) }; }
+  if (PARENT){
+    var pb = document.getElementById('parentBanner'); pb.style.display='block';
+    pb.innerHTML = '↳ attached to <b>'+PARENT.module+'</b> <span style="font-family:ui-monospace,monospace;color:var(--muted);">'+PARENT.id+'</span> · '+
+      '<a href="'+PARENT.module+'.html?'+(apiRaw?('api='+encodeURIComponent(apiRaw)):'')+'" style="color:var(--accent);text-decoration:none;">open parent →</a>';
+  }
+
+  function serialize(){
+    var data = {};
+    FIELDS.forEach(function(f){
+      var elx = form.elements[f.n]; if(!elx) return;
+      if (f.k==='checkbox'){ data[f.n] = elx.checked; return; }
+      if (f.k==='multiselect'){ var sel=Array.prototype.map.call(elx.selectedOptions,function(o){return o.value;}).filter(Boolean); if(sel.length) data[f.n]=sel; return; }
+      var v = elx.value;
+      if (v==='' || v==null) return;
+      if (f.k==='number'){ var num=Number(v); if(!isNaN(num)) data[f.n]=num; }
+      else if (f.k==='array'){ var a=v.split(',').map(function(s){return s.trim();}).filter(Boolean); if(a.length) data[f.n]=a; }
+      else if (f.k==='json'){ try{ data[f.n]=JSON.parse(v); }catch(e){ data[f.n]=v; } }
+      else data[f.n]=v; // text + select
+    });
+    return data;
+  }
+  function fill(rec){
+    var d = rec.data || {};
+    FIELDS.forEach(function(f){
+      var elx = form.elements[f.n]; if(!elx) return;
+      var v = d[f.n];
+      if (f.k==='checkbox'){ elx.checked = !!v; }
+      else if (f.k==='multiselect'){ var arr=Array.isArray(v)?v:(v==null?[]:[v]); Array.prototype.forEach.call(elx.options,function(o){o.selected=arr.indexOf(o.value)>=0;}); }
+      else if (f.k==='array'){ elx.value = Array.isArray(v)? v.join(', ') : (v==null?'':v); }
+      else if (f.k==='json'){ elx.value = (v==null)?'':(typeof v==='object'? JSON.stringify(v) : String(v)); }
+      else { elx.value = (v==null)?'':v; } // text + select
+    });
+  }
+  function resetForm(){ form.reset(); editing=null; submitBtn.textContent='Save'; cancelBtn.style.display='none'; }
+  cancelBtn.addEventListener('click', resetForm);
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var data = serialize(), url, method;
+    if (editing){ url = API+'/records/'+MODULE+'/'+editing.id+'?expectedVersion='+editing.version; method='PATCH'; }
+    else { url = API+'/records/'+MODULE+(PARENT?('?parentModule='+encodeURIComponent(PARENT.module)+'&parentId='+encodeURIComponent(PARENT.id)):''); method='POST'; }
+    afetch(url,{method:method,headers:{'content-type':'application/json'},body:JSON.stringify(data)})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status+(r.status===409?' (someone else edited this — reload)':'')); return r.json(); })
+      .then(function(){ msg.className='msg ok'; msg.textContent = editing?'Updated.':'Saved.'; resetForm(); load(); })
+      .catch(function(err){ msg.className='msg err'; msg.textContent=(editing?'Update':'Save')+' failed: '+err.message; });
+  });
+
+  function startEdit(id){ var rec = records.find(function(r){return r.id===id;}); if(!rec) return;
+    fill(rec); editing={id:id,version:rec.version}; submitBtn.textContent='Update (v'+rec.version+')'; cancelBtn.style.display='block';
+    msg.className='msg'; msg.textContent=''; window.scrollTo(0,0);
+  }
+  function del(id){ var rec = records.find(function(r){return r.id===id;}); if(!rec) return;
+    if(!confirm('Delete this record? (history is kept in the log)')) return;
+    afetch(API+'/records/'+MODULE+'/'+id+'?expectedVersion='+rec.version,{method:'DELETE'})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(){ msg.className='msg ok'; msg.textContent='Deleted.'; if(editing&&editing.id===id) resetForm(); load(); })
+      .catch(function(err){ msg.className='msg err'; msg.textContent='Delete failed: '+err.message; });
+  }
+  function showHistory(id){
+    afetch(API+'/records/'+MODULE+'/'+id+'/history').then(function(r){return r.json();}).then(function(h){
+      var lines=(h||[]).map(function(e){ return '#'+e.seq+'  '+e.type+'  '+(e.at||''); }).join('\n');
+      alert('History for '+id+':\n\n'+lines);
+    }).catch(function(){});
+  }
+  function cell(rec,name){ var v=(rec.data||{})[name];
+    if(v==null) return '—'; if(v===true) return '✓'; if(v===false) return '—';
+    if(Array.isArray(v)) return v.join(', '); if(typeof v==='object') return JSON.stringify(v); return String(v);
+  }
+  function toggleRelated(a){
+    var tr = a.closest('tr'), nx = tr.nextSibling;
+    if (nx && nx.className==='relrow'){ nx.parentNode.removeChild(nx); return; }
+    var id = a.getAttribute('data-rel');
+    var links = CHILDREN.map(function(c){ return '<a href="'+c.slug+'.html?parent='+MODULE+':'+id+API_Q+'" style="color:var(--accent);margin:0 12px 4px 0;white-space:nowrap;display:inline-block;">＋ '+c.title+'</a>'; }).join('');
+    var row = document.createElement('tr'); row.className='relrow';
+    row.innerHTML = '<td colspan="'+(COLS.length+1)+'" style="background:#0e131b;"><div style="padding:6px 2px;color:var(--muted);font-size:12px;">Attach a sub-record → '+links+'</div></td>';
+    tr.parentNode.insertBefore(row, tr.nextSibling);
+  }
+  function load(){
+    var q = []; if (showDeleted.checked) q.push('includeDeleted=1'); if (PARENT) q.push('parentId='+encodeURIComponent(PARENT.id));
+    var url = API+'/records/'+MODULE+(q.length?('?'+q.join('&')):'');
+    afetch(url).then(function(r){return r.json();}).then(function(list){
+      var all = list||[]; records = all.filter(function(r){return !r.deleted;});
+      var box=document.getElementById('list');
+      if(!all.length){ box.innerHTML='<div class="empty">None yet.</div>'; return; }
+      var head = COLS.map(function(c){ return '<th>'+c.replace(/[_-]+/g,' ')+'</th>'; }).join('')+'<th></th>';
+      var rows = all.map(function(rec){
+        if(rec.deleted){ return '<tr style="opacity:.5;"><td colspan="'+(COLS.length)+'"><span class="pill" style="background:rgba(255,59,48,.14);color:var(--bad);">deleted</span> '+(rec.deletedReason||'voided')+'</td>'+
+          '<td><a href="#" data-hist="'+rec.id+'" style="color:var(--muted);">history</a></td></tr>'; }
+        var tds = COLS.map(function(c){ return '<td>'+cell(rec,c)+'</td>'; }).join('');
+        var rel = CHILDREN.length ? ' · <a href="#" data-rel="'+rec.id+'" style="color:var(--ok);">related ▾</a>' : '';
+        return '<tr>'+tds+'<td style="white-space:nowrap;"><a href="#" data-edit="'+rec.id+'" style="color:var(--accent);">edit</a> · '+
+          '<a href="#" data-hist="'+rec.id+'" style="color:var(--muted);">hist</a> · '+
+          '<a href="#" data-del="'+rec.id+'" style="color:var(--bad);">del</a>'+rel+'</td></tr>';
+      }).join('');
+      box.innerHTML='<table><thead><tr>'+head+'</tr></thead><tbody>'+rows+'</tbody></table>';
+      box.querySelectorAll('[data-edit]').forEach(function(a){a.onclick=function(e){e.preventDefault();startEdit(a.getAttribute('data-edit'));};});
+      box.querySelectorAll('[data-del]').forEach(function(a){a.onclick=function(e){e.preventDefault();del(a.getAttribute('data-del'));};});
+      box.querySelectorAll('[data-hist]').forEach(function(a){a.onclick=function(e){e.preventDefault();showHistory(a.getAttribute('data-hist'));};});
+      box.querySelectorAll('[data-rel]').forEach(function(a){a.onclick=function(e){e.preventDefault();toggleRelated(a);};});
+    }).catch(function(){ document.getElementById('list').innerHTML='<div class="empty">API offline — start the server or pass ?api=…</div>'; });
+  }
+  showDeleted.addEventListener('change', load);
+  load();
+})();
+</script>
+</body>
+</html>

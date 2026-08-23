@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Open Fire Platform — Command Board</title>
+<style>
+  :root {
+    --bg:#0b0e13; --panel:#141a22; --panel2:#1a212c; --line:#28313f;
+    --text:#e6edf3; --muted:#8b98a9; --accent:#4aa3ff; --ok:#3fb950;
+    --warn:#d29922; --mayday:#ff3b30; --open:#58a6ff; --interior:#ff8a3d; --purple:#a371f7;
+  }
+  * { box-sizing:border-box; }
+  html,body { height:100%; }
+  body { margin:0; font:14px/1.45 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+         background:var(--bg); color:var(--text); display:flex; flex-direction:column; }
+
+  /* ---------- command bar (always on top, can't be missed) ---------- */
+  #cmdbar { display:flex; align-items:stretch; gap:1px; background:var(--line); border-bottom:1px solid var(--line); }
+  #cmdbar > div { background:var(--panel); padding:8px 14px; display:flex; flex-direction:column; justify-content:center; }
+  #cmdbar .idc { flex:1; }
+  #cmdbar .idc .type { font-size:16px; font-weight:700; letter-spacing:.3px; }
+  #cmdbar .idc .addr { color:var(--muted); font-size:12px; }
+  .clockbox { text-align:center; min-width:118px; }
+  .clockbox .lbl { font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); }
+  .clockbox .val { font-family:ui-monospace,monospace; font-size:22px; font-weight:700; line-height:1.1; }
+  .clockbox .val.warn { color:var(--warn); } .clockbox .val.bad { color:var(--mayday); } .clockbox .val.ok { color:var(--ok); }
+  .strat { min-width:118px; text-align:center; cursor:pointer; user-select:none; }
+  .strat .val { font-size:16px; font-weight:800; letter-spacing:.5px; }
+  .strat.off .val { color:var(--ok); } .strat.def .val { color:var(--mayday); }
+  .connbox { min-width:150px; }
+  .connbox .status { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
+  .dot { width:9px; height:9px; border-radius:50%; background:var(--warn); box-shadow:0 0 8px currentColor; }
+  .dot.ok { background:var(--ok); } .dot.down { background:var(--mayday); }
+  .modebtn { margin-top:5px; font-size:11px; font-family:ui-monospace,monospace; background:var(--panel2);
+             border:1px solid var(--line); color:var(--text); border-radius:5px; padding:3px 7px; cursor:pointer; }
+
+  /* ---------- mayday banner ---------- */
+  #mayday { display:none; align-items:center; gap:14px; padding:12px 18px; background:var(--mayday);
+            color:#fff; font-weight:800; letter-spacing:.4px; font-size:16px; animation:flash 1s steps(2,start) infinite; }
+  #mayday.show { display:flex; }
+  #mayday .big { font-size:19px; }
+  #mayday button { margin-left:auto; background:#fff; color:var(--mayday); border:0; border-radius:6px; padding:8px 16px; font-weight:800; cursor:pointer; }
+  @keyframes flash { 50% { background:#b21f16; } }
+
+  /* ---------- critical escalation band ---------- */
+  #critbar { display:none; align-items:center; gap:10px; padding:7px 16px; background:#2a0d0d;
+             border-bottom:1px solid var(--mayday); overflow-x:auto; white-space:nowrap; }
+  #critbar.show { display:flex; }
+  #critbar .lead { font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--mayday); text-transform:uppercase; flex:none; }
+  #critbar .cchip { display:inline-flex; align-items:center; gap:8px; flex:none; background:rgba(255,59,48,.14);
+                    border:1px solid var(--mayday); border-radius:8px; padding:5px 10px; animation:critpulse 1.3s ease-in-out infinite; }
+  #critbar .cchip .cl { font-size:12px; font-weight:700; color:#ffd7d3; }
+  #critbar .cchip .cv { font-family:ui-monospace,monospace; font-weight:800; color:#fff; }
+
+  /* ---------- glance ticker ---------- */
+  #ticker { background:var(--panel2); border-bottom:1px solid var(--line); overflow:hidden; white-space:nowrap;
+            font-size:12px; color:var(--muted); position:relative; height:28px; }
+  #tickerTrack { display:inline-block; padding-left:100%; animation:scroll 40s linear infinite; line-height:28px; }
+  #ticker:hover #tickerTrack { animation-play-state:paused; }
+  #tickerTrack span { margin:0 22px; } #tickerTrack b { color:var(--text); } #tickerTrack .m { color:var(--mayday); font-weight:700; }
+  @keyframes scroll { 0%{ transform:translateX(0);} 100%{ transform:translateX(-100%);} }
+
+  /* ---------- main grid ---------- */
+  main { flex:1; display:grid; grid-template-columns: minmax(340px, 1fr) 1.35fr; gap:10px; padding:10px; min-height:0; }
+  @media (max-width:900px){ main { grid-template-columns:1fr; } }
+  .col { display:flex; flex-direction:column; gap:10px; min-height:0; }
+
+  h2 { font-size:11px; text-transform:uppercase; letter-spacing:.09em; color:var(--muted); margin:0; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .card .hd { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .card .hd .spacer{ flex:1; }
+  .tag { font-size:10px; padding:1px 6px; border-radius:10px; border:1px solid var(--line); color:var(--muted); }
+  .note { font-size:11px; color:var(--muted); }
+
+  /* event feed */
+  .feedcard { display:flex; flex-direction:column; min-height:0; flex:1; }
+  #feed { overflow:auto; min-height:120px; }
+  .fe { display:flex; gap:8px; padding:6px 6px; border-bottom:1px solid var(--line); font-size:13px; cursor:pointer; border-left:3px solid transparent; }
+  .fe:hover { background:var(--panel2); }
+  .fe.sel { background:var(--panel2); border-left-color:var(--accent); }
+  .fe .clk { color:var(--muted); font-family:ui-monospace,monospace; font-size:11px; min-width:52px; }
+  .fe .k { min-width:96px; font-weight:600; }
+  .fe .d { color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fe.sev-may { border-left-color:var(--mayday); } .fe.sev-may .k{ color:#ff8a80; }
+  .fe.sev-bench { border-left-color:var(--ok); }
+  .fe.sev-dispatch { border-left-color:var(--purple); }
+  .fe.sev-arrive { border-left-color:var(--accent); }
+  .fe.sev-radio .k { color:var(--muted); font-weight:500; }
+
+  /* detail / display window */
+  #detail { min-height:120px; }
+  #detail .dt-type { font-size:15px; font-weight:700; }
+  #detail .dt-time { color:var(--muted); font-size:12px; font-family:ui-monospace,monospace; }
+  #detail .kv { display:grid; grid-template-columns:120px 1fr; gap:2px 10px; margin-top:8px; font-size:13px; }
+  #detail .kv .k { color:var(--muted); }
+  #detail .empty { color:var(--muted); font-size:13px; }
+
+  /* right-side widget grid (modular) */
+  #widgets { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-content:start; overflow:auto; }
+  @media (max-width:1200px){ #widgets { grid-template-columns:1fr; } }
+  .w-timers, .w-accountability, .w-benchmarks { grid-column:1 / -1; }
+
+  /* ---------- ACTIVE TIMERS (the obligation queue) ---------- */
+  .w-timers { border-color:#33405a; }
+  .trow { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; margin-bottom:6px;
+          border:1px solid var(--line); border-left-width:3px; background:var(--panel2); }
+  .trow:last-child { margin-bottom:0; }
+  .trow .lab { flex:1; font-size:13px; font-weight:600; }
+  .trow .lab .hint { font-weight:400; color:var(--muted); font-size:11px; }
+  .trow .cd { font-family:ui-monospace,monospace; font-weight:800; font-size:17px; min-width:78px; text-align:right; }
+  .trow.running { border-left-color:var(--accent); }
+  .trow.warn { border-left-color:var(--warn); } .trow.warn .cd { color:var(--warn); }
+  .trow.crit { border-left-color:var(--mayday); background:rgba(255,59,48,.08); animation:critpulse 1.3s ease-in-out infinite; }
+  .trow.crit .cd { color:var(--mayday); }
+  .trow.crit.severe { border-left-width:5px; background:rgba(255,59,48,.2); box-shadow:0 0 0 1px var(--mayday) inset; animation:critpulse .6s ease-in-out infinite; }
+  .trow.crit.severe .cd { font-size:19px; }
+  .trow.green { border-left-color:var(--ok); background:rgba(63,185,80,.09); cursor:pointer; }
+  .trow.green:hover { background:rgba(63,185,80,.18); }
+  .trow.green .cd { color:var(--ok); }
+  .trow .clr { font-size:11px; color:var(--ok); font-weight:700; white-space:nowrap; }
+  .trow .adj { display:flex; gap:4px; flex:none; }
+  .trow .adj button { width:24px; height:24px; border-radius:6px; border:1px solid var(--line); background:var(--panel);
+                      color:var(--text); font-weight:800; font-size:15px; line-height:1; cursor:pointer; padding:0; }
+  .trow .adj button:hover { border-color:var(--accent); color:var(--accent); }
+  @keyframes critpulse { 50% { box-shadow:0 0 0 2px rgba(255,59,48,.45) inset; } }
+  #critbar .cchip.severe { animation:critpulse .6s ease-in-out infinite; background:rgba(255,59,48,.3); transform:scale(1.04); }
+
+  .unit { display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid var(--line); font-size:13px; }
+  .unit:last-child { border-bottom:0; }
+  .unit .id { min-width:64px; font-weight:700; font-family:ui-monospace,monospace; }
+  .unit .as { color:var(--muted); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .unit .air { font-family:ui-monospace,monospace; font-size:12px; color:var(--muted); }
+  .unit .air.warn { color:var(--warn); } .unit .air.bad { color:var(--mayday); font-weight:700; }
+  .st { font-size:10px; padding:1px 7px; border-radius:10px; font-weight:600; }
+  .st.enroute { background:rgba(163,113,247,.16); color:var(--purple); }
+  .st.onscene { background:rgba(74,163,255,.16); color:var(--accent); }
+  .st.interior { background:rgba(255,138,61,.18); color:var(--interior); }
+  .st.staging { background:rgba(139,152,169,.16); color:var(--muted); }
+  .st.rehab { background:rgba(63,185,80,.14); color:var(--ok); }
+  .st.rit { background:rgba(255,59,48,.16); color:var(--mayday); }
+
+  .counts { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+  .count { flex:1; min-width:66px; text-align:center; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:6px 4px; }
+  .count .n { font-size:20px; font-weight:800; font-family:ui-monospace,monospace; }
+  .count .l { font-size:9px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+
+  .bench { display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13px; }
+  .bench .box { width:16px; height:16px; border-radius:4px; border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:11px; }
+  .bench.done .box { background:var(--ok); border-color:var(--ok); color:#04120a; }
+  .bench.done .lbl { color:var(--text); } .bench .lbl{ color:var(--muted); flex:1; }
+  .bench .at { font-family:ui-monospace,monospace; font-size:11px; color:var(--muted); }
+
+  .parbtn { width:100%; margin-top:8px; background:var(--warn); color:#1a1300; border:0; border-radius:7px; padding:8px; font-weight:800; cursor:pointer; letter-spacing:.3px; }
+
+  .cond { display:flex; justify-content:space-between; padding:4px 0; font-size:13px; border-bottom:1px solid var(--line); }
+  .cond:last-child { border-bottom:0; } .cond .k { color:var(--muted); } .cond .v { font-weight:600; }
+  .tgline { font-size:12px; padding:3px 0; color:var(--muted); } .tgline b { color:var(--text); font-family:ui-monospace,monospace; }
+</style>
+</head>
+<body>
+
+<!-- ===== command bar ===== -->
+<div id="cmdbar">
+  <div class="idc">
+    <div class="type" id="cmdType">— No active incident —</div>
+    <div class="addr" id="cmdAddr">standby</div>
+  </div>
+  <div class="clockbox"><div class="lbl">Elapsed</div><div class="val" id="elapsed">00:00</div></div>
+  <div class="clockbox"><div class="lbl">Next PAR</div><div class="val" id="parClock">—</div></div>
+  <div class="strat off" id="strat" title="Tap to toggle strategy"><div class="lbl" style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);">Strategy</div><div class="val">OFFENSIVE</div></div>
+  <div class="connbox">
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">demo</span></div>
+    <button class="modebtn" id="modeBtn">▶ restart demo</button>
+  </div>
+</div>
+
+<!-- ===== mayday banner ===== -->
+<div id="mayday">
+  <span class="big">‼ MAYDAY</span><span id="maydayText"></span>
+  <button onclick="ackMayday()">Acknowledge</button>
+</div>
+
+<!-- ===== critical escalation band (any timer in crit state, pinned to top) ===== -->
+<div id="critbar"></div>
+
+<!-- ===== glance ticker ===== -->
+<div id="ticker"><div id="tickerTrack"><span>Standby — awaiting dispatch.</span></div></div>
+
+<!-- ===== main ===== -->
+<main>
+  <!-- LEFT: event feed (history) + display window -->
+  <div class="col">
+    <div class="card feedcard">
+      <div class="hd"><h2>Event feed</h2><span class="spacer"></span><span class="tag" id="feedCount">0</span></div>
+      <div id="feed"><div class="empty" style="color:var(--muted);font-size:13px;padding:8px 0;">No events yet.</div></div>
+    </div>
+    <div class="card" id="detail">
+      <div class="hd"><h2>Display window</h2><span class="spacer"></span><span class="tag">tap an event</span></div>
+      <div class="empty">Select an event from the feed to see its detail here.</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: modular widget grid -->
+  <div class="col" style="min-height:0;">
+    <div id="widgets">
+
+      <div class="card w-timers">
+        <div class="hd"><h2>⏱ Active timers · obligations</h2><span class="spacer"></span><span class="tag" id="timerCount">0 active</span></div>
+        <div id="timers"><div class="empty" style="color:var(--muted);font-size:13px;">No active timers.</div></div>
+        <div class="note" style="margin-top:8px;">Sorted by urgency. Green = resolved — <b>tap a green timer to clear it</b>. A running or overdue timer can’t be dismissed until it’s handled.</div>
+      </div>
+
+      <div class="card w-accountability">
+        <div class="hd"><h2>Accountability · PAR</h2><span class="spacer"></span><span class="tag" id="onSceneCount">0 on scene</span></div>
+        <div id="units"><div class="empty" style="color:var(--muted);font-size:13px;">No units yet.</div></div>
+        <button class="parbtn" id="parBtn" onclick="callPAR()">Call PAR — all units report</button>
+      </div>
+
+      <div class="card w-resources">
+        <div class="hd"><h2>Resources</h2></div>
+        <div class="counts">
+          <div class="count"><div class="n" id="cScene">0</div><div class="l">on scene</div></div>
+          <div class="count"><div class="n" id="cEnroute">0</div><div class="l">en route</div></div>
+          <div class="count"><div class="n" id="cStaging">0</div><div class="l">staging</div></div>
+        </div>
+        <div class="note" id="resNote">Awaiting units.</div>
+      </div>
+
+      <div class="card w-conditions">
+        <div class="hd"><h2>Conditions</h2></div>
+        <div class="cond"><span class="k">Wind</span><span class="v" id="condWind">—</span></div>
+        <div class="cond"><span class="k">Temp</span><span class="v" id="condTemp">—</span></div>
+        <div class="cond"><span class="k">Water supply</span><span class="v" id="condWater">—</span></div>
+      </div>
+
+      <div class="card w-benchmarks">
+        <div class="hd"><h2>Tactical benchmarks</h2></div>
+        <div id="benchmarks"></div>
+      </div>
+
+      <div class="card w-comms">
+        <div class="hd"><h2>Communications</h2></div>
+        <div id="talkgroups"><div class="tgline">No talkgroups bound.</div></div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var API = params.get('api') || 'http://localhost:3000/api/v1';
+  var LIVE = params.get('live') === '1';
+  var DEMO = !LIVE;
+  // ms per "minute". Compressed in demo so the timer lifecycle is visible in ~80s;
+  // real minutes in live mode.
+  var MIN = DEMO ? 2000 : 60000;
+  // ---- STANDARD times (minutes). Defaults today; per-department override is a TODO (see BACKLOG). ----
+  var STANDARDS = {
+    par: 10,              // PAR cadence
+    airWarn: 15, airCrit: 20, airSevere: 25,   // interior time-in-IDLH thresholds
+    primarySearch: 8,     // life-safety: confirm primary all-clear within N min of dispatch
+    replacementRit: 2,    // stage a replacement RIT after one deploys
+    rehab: 20,            // minimum rehab before reassignment
+    canReport: 10,        // Conditions/Actions/Needs report from divisions, cadence
+    secondarySearch: 20,  // complete a thorough secondary search (after primary)
+    utilities: 15,        // secure utilities (gas/electric)
+    transportScene: 10,   // EMS scene-time goal, patient packaged & transporting ("platinum ten")
+    severeOver: 3,        // minutes past due before a countdown escalates to "severe" (louder)
+  };
+  var PAR_MIN = STANDARDS.par;
+
+  // ------------------------------------------------------------------ state
+  var state = {
+    incident:null, units:{}, order:[],
+    benchmarks:[
+      { key:'command', label:'Command established', done:false, at:null },
+      { key:'threesixty', label:'360 size-up complete', done:false, at:null },
+      { key:'water', label:'Water on the fire', done:false, at:null },
+      { key:'search', label:'Primary search — all clear', done:false, at:null },
+      { key:'secondary', label:'Secondary search — all clear', done:false, at:null },
+      { key:'utilities', label:'Utilities secured', done:false, at:null },
+      { key:'control', label:'Under control', done:false, at:null },
+    ],
+    talkgroups:{}, events:[], mayday:null, conditions:{},
+    timers:{}, timerOrder:[], seq:0,
+  };
+
+  function el(id){ return document.getElementById(id); }
+  function now(){ return Date.now(); }
+  function hhmm(ms){ var s=Math.max(0,Math.floor(ms/1000)); var m=Math.floor(s/60); s=s%60; return (m<10?'0':'')+m+':'+(s<10?'0':'')+s; }
+  function clockOf(t){ try { return new Date(t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}); } catch(e){ return ''; } }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+  // ================================================================== TIMER ENGINE
+  // Every time-sensitive obligation is a timer. States: running → warn → crit (never
+  // dismissible), or green (resolved — the ONLY state a human can tap to clear).
+  //   countdown : an obligation due by dueAt (PAR, replacement RIT). warn within warnLead, crit past due.
+  //   countup/danger : a hazard clock (interior air time, an open mayday). warn at warnMs, crit at critMs.
+  //   countup/progress : a good clock counting to a target (rehab minimum). auto-greens at targetMs.
+  function addTimer(t){
+    if (state.timers[t.id]) return state.timers[t.id];
+    t.state = t.state || 'running'; t.startedAt = t.startedAt || now();
+    state.timers[t.id] = t; state.timerOrder.push(t.id);
+    return t;
+  }
+  function greenTimer(id, hint){ var t=state.timers[id]; if (t && t.state!=='green'){ t.state='green'; t.resolvedAt=now(); if(hint) t.hint=hint; } }
+  function dropTimer(id){
+    var t=state.timers[id]; if(!t) return;
+    delete state.timers[id]; state.timerOrder = state.timerOrder.filter(function(x){return x!==id;});
+    if (t.recurring){ addTimer({ id:t.id, label:t.label, mode:'countdown', dueAt:now()+t.intervalMs,
+      warnLead:t.warnLead, recurring:true, intervalMs:t.intervalMs, hint:t.baseHint, baseHint:t.baseHint }); }
+  }
+  function tickTimer(t){
+    if (t.state==='green') return;
+    t.severe = false;
+    if (t.mode==='countdown'){
+      var rem = t.dueAt - now();
+      t.state = rem<=0 ? 'crit' : (rem<=(t.warnLead||0) ? 'warn' : 'running');
+      t.severe = rem <= -(t.severeOverMs != null ? t.severeOverMs : STANDARDS.severeOver*MIN);
+    } else if (t.flavor==='progress'){
+      if (now()-t.startedAt >= t.targetMs){ t.state='green'; t.resolvedAt=now(); if(t.doneHint) t.hint=t.doneHint; }
+    } else { // danger countup
+      var e = now()-t.startedAt;
+      t.state = e>=t.critMs ? 'crit' : (e>=t.warnMs ? 'warn' : 'running');
+      t.severe = t.severeMs != null ? (e>=t.severeMs) : (e >= t.critMs + STANDARDS.severeOver*MIN);
+    }
+  }
+  // Overdue countdowns REVERSE direction — they count UP how far OVER the standard you are.
+  function timerText(t){
+    if (t.state==='green') return 'CLEAR';
+    if (t.mode==='countdown'){ var rem=t.dueAt-now(); return rem>=0 ? hhmm(rem) : 'OVER +'+hhmm(-rem); }
+    return hhmm(now()-t.startedAt);
+  }
+  // Live adjustment of a timer's standard (± minutes), without dismissing it.
+  function nudge(id, deltaMin){
+    var t = state.timers[id]; if (!t) return;
+    var d = deltaMin * MIN;
+    if (t.mode==='countdown'){ t.dueAt += d; }
+    else if (t.flavor==='progress'){ t.targetMs = Math.max(0, t.targetMs + d); }
+    else { t.warnMs = Math.max(0, t.warnMs + d); t.critMs = Math.max(0, t.critMs + d); if (t.severeMs!=null) t.severeMs = Math.max(0, t.severeMs + d); }
+    render();
+  }
+  window.__nudge = nudge;
+  function timerUrgency(t){ // smaller = more urgent, used within a state band
+    if (t.mode==='countdown') return (t.dueAt-now());
+    return -(now()-t.startedAt);
+  }
+  var RANK = { crit:0, warn:1, running:2, green:3 };
+
+  // ------------------------------------------------------------------ event intake (demo + live share this)
+  function intake(evt){
+    var t = evt.at || now();
+    switch (evt.type){
+      case 'dispatch':
+        state.incident = { type:evt.incidentType, address:evt.address, dispatchedAt:t, strategy:'offensive' };
+        if (evt.conditions) state.conditions = evt.conditions;
+        addTimer({ id:'par', label:'PAR — poll all units', mode:'countdown', dueAt:t+PAR_MIN*MIN,
+                   warnLead:2*MIN, recurring:true, intervalMs:PAR_MIN*MIN,
+                   hint:'personnel accountability report every '+PAR_MIN+' min', baseHint:'personnel accountability report every '+PAR_MIN+' min' });
+        // Life-safety survivability window: confirm the primary search / occupants within N min of dispatch.
+        addTimer({ id:'psearch', label:'Primary search window — confirm occupants', mode:'countdown',
+                   dueAt:t+STANDARDS.primarySearch*MIN, warnLead:2*MIN,
+                   hint:'verify house is clear within '+STANDARDS.primarySearch+' min of dispatch' });
+        addTimer({ id:'utils', label:'Secure utilities (gas / electric)', mode:'countdown',
+                   dueAt:t+STANDARDS.utilities*MIN, warnLead:2*MIN, hint:'secure utilities within '+STANDARDS.utilities+' min' });
+        feed('dispatch','DISPATCH', evt.incidentType+' · '+evt.address, t, evt); break;
+      case 'unit_enroute':
+        upsertUnit(evt.unit, { status:'enroute', assignment:evt.assignment||'en route' });
+        feed('dispatch', evt.unit, 'responding'+(evt.assignment?(' · '+evt.assignment):''), t, evt); break;
+      case 'unit_onscene':
+        var prevO = state.units[evt.unit] || {};
+        upsertUnit(evt.unit, { status:evt.status||'onscene', assignment:evt.assignment||'on scene',
+                               onAirSince:(evt.status==='interior')?t:null });
+        applyStatusEffects(evt.unit, evt.status||'onscene', t, evt, prevO);
+        feed('arrive', evt.unit, 'on scene'+(evt.assignment?(' · '+evt.assignment):''), t, evt); break;
+      case 'assignment':
+        var prev = state.units[evt.unit] || {};
+        upsertUnit(evt.unit, { status:evt.status, assignment:evt.assignment,
+                               onAirSince: evt.status==='interior' ? (prev.onAirSince||t) : null });
+        applyStatusEffects(evt.unit, evt.status, t, evt, prev);
+        feed('arrive', evt.unit, evt.assignment, t, evt); break;
+      case 'benchmark':
+        markBench(evt.key, t);
+        if (evt.key==='command'){ // command established — divisions now owe periodic CAN reports
+          addTimer({ id:'can', label:'CAN report — division update', mode:'countdown', dueAt:t+STANDARDS.canReport*MIN,
+                     warnLead:2*MIN, recurring:true, intervalMs:STANDARDS.canReport*MIN,
+                     hint:'Conditions / Actions / Needs from divisions every '+STANDARDS.canReport+' min',
+                     baseHint:'Conditions / Actions / Needs from divisions every '+STANDARDS.canReport+' min' });
+        }
+        if (evt.key==='search'){ // primary all-clear resolves the window and opens the secondary-search clock
+          greenTimer('psearch','primary all-clear — occupants accounted');
+          addTimer({ id:'ssearch', label:'Secondary search — all clear', mode:'countdown',
+                     dueAt:t+STANDARDS.secondarySearch*MIN, warnLead:3*MIN, hint:'thorough secondary search after primary' });
+        }
+        if (evt.key==='secondary') greenTimer('ssearch','secondary all-clear');
+        if (evt.key==='utilities') greenTimer('utils','utilities secured');
+        feed('bench','BENCHMARK', benchLabel(evt.key), t, evt); break;
+      case 'strategy':
+        if (state.incident) state.incident.strategy = evt.strategy;
+        feed('bench','STRATEGY', evt.strategy.toUpperCase()+(evt.note?(' · '+evt.note):''), t, evt); break;
+      case 'radio':
+        if (evt.talkgroupId) state.talkgroups[evt.talkgroupId] = evt.talkgroupLabel || ('TG '+evt.talkgroupId);
+        feed('radio', evt.unit||'RADIO', (evt.text||'traffic')+(evt.talkgroupId?(' · tg '+evt.talkgroupId):''), t, evt); break;
+      case 'mayday':
+        state.mayday = { unit:evt.unit, at:t, note:evt.note };
+        if (state.units[evt.unit]) state.units[evt.unit].status = 'interior';
+        addTimer({ id:'mayday', label:'‼ MAYDAY — '+evt.unit+' unaccounted', mode:'countup', flavor:'danger',
+                   warnMs:0, critMs:0, hint:'RIT deploy · PAR · account for member' });
+        showMayday(evt); feed('may','‼ MAYDAY', evt.unit+(evt.note?(' · '+evt.note):''), t, evt); break;
+      case 'mayday_resolved':
+        greenTimer('mayday', evt.note||'member accounted for'); state.mayday=null;
+        feed('bench','MAYDAY RESOLVED', evt.note||'member accounted for', t, evt); break;
+      case 'par':
+        greenTimer('par', evt.result||'all units accounted for');
+        feed('bench','PAR', evt.result||'all units accounted for', t, evt); break;
+      case 'can_report':
+        greenTimer('can', evt.result||'CAN received'); // recurring — re-arms when cleared
+        feed('bench','CAN REPORT', evt.result||'division update', t, evt); break;
+      case 'transport_start':
+        addTimer({ id:'transport:'+evt.patient, label:'EMS transport — '+evt.patient, mode:'countup', flavor:'danger',
+                   startedAt:t, warnMs:STANDARDS.transportScene*MIN, critMs:(STANDARDS.transportScene+5)*MIN,
+                   hint:'scene time — package & transport '+evt.patient });
+        feed('bench','PATIENT', evt.patient+' to '+(evt.unit||'medic'), t, evt); break;
+      case 'transport_depart':
+        greenTimer('transport:'+evt.patient, 'transporting to '+(evt.dest||'hospital'));
+        feed('bench','TRANSPORT', evt.patient+' → '+(evt.dest||'hospital'), t, evt); break;
+      case 'under_control':
+        markBench('control', t); feed('bench','UNDER CONTROL', evt.note||'fire under control', t, evt); break;
+    }
+    render();
+  }
+
+  // Side-effects of a unit entering a status — shared by unit_onscene and assignment so a
+  // relief RIT (which arrives on-scene) resolves the replacement-RIT timer the same as a
+  // reassignment would.
+  function applyStatusEffects(unit, status, t, evt, prev){
+    if (status==='interior') startAir(unit, t);
+    if (status==='rehab'){ greenTimer('air:'+unit,'out of IDLH'); startRehab(unit, t); }
+    if (status==='rit') greenTimer('rrit','replacement RIT staged');
+    if (evt && evt.ritDeploy) addTimer({ id:'rrit', label:'Establish replacement RIT', mode:'countdown',
+                                         dueAt:t+STANDARDS.replacementRit*MIN, warnLead:1*MIN, hint:'RIT deployed on the mayday — stage another' });
+  }
+  function startAir(unit, t){
+    addTimer({ id:'air:'+unit, label:'Air / time-in-IDLH — '+unit, mode:'countup', flavor:'danger',
+               startedAt:t, warnMs:STANDARDS.airWarn*MIN, critMs:STANDARDS.airCrit*MIN, severeMs:STANDARDS.airSevere*MIN,
+               hint:'rotate or exit interior' });
+  }
+  function startRehab(unit, t){
+    addTimer({ id:'rehab:'+unit, label:'Rehab — '+unit, mode:'countup', flavor:'progress',
+               startedAt:t, targetMs:STANDARDS.rehab*MIN, hint:'minimum rehab before reassignment', doneHint:'rehab complete — available' });
+  }
+  function upsertUnit(id, patch){
+    if (!state.units[id]){ state.units[id] = { id:id, type:unitType(id), status:'enroute', assignment:'', onAirSince:null }; state.order.push(id); }
+    for (var k in patch){ if (patch[k]!==undefined) state.units[id][k]=patch[k]; }
+  }
+  function unitType(id){ var c=id[0]; return c==='E'?'engine':c==='T'||c==='L'?'truck':c==='M'?'medic':c==='B'||c==='C'?'chief':c==='R'?'rescue':'unit'; }
+  function markBench(key, t){ state.benchmarks.forEach(function(b){ if(b.key===key && !b.done){ b.done=true; b.at=t; } }); }
+  function benchLabel(key){ var b=state.benchmarks.find(function(x){return x.key===key;}); return b?b.label:key; }
+  function feed(sev,k,d,t,raw){ state.events.unshift({ id:++state.seq, sev:sev,k:k,d:d,t:t,raw:raw }); if(state.events.length>300) state.events.pop(); }
+
+  // ------------------------------------------------------------------ render
+  var selectedId = null;
+  function render(){
+    if (state.incident){
+      el('cmdType').textContent = state.incident.type; el('cmdAddr').textContent = state.incident.address;
+      var s=el('strat'), off=state.incident.strategy==='offensive';
+      s.className='strat '+(off?'off':'def'); s.querySelector('.val').textContent = off?'OFFENSIVE':'DEFENSIVE';
+    }
+    var f=el('feed'); el('feedCount').textContent = state.events.length;
+    if (!state.events.length){ f.innerHTML='<div class="empty" style="color:var(--muted);font-size:13px;padding:8px 0;">No events yet.</div>'; }
+    else {
+      f.innerHTML = state.events.map(function(e){
+        return '<div class="fe sev-'+e.sev+(e.id===selectedId?' sel':'')+'" data-id="'+e.id+'">'+
+               '<span class="clk">'+clockOf(e.t).slice(0,5)+'</span><span class="k">'+esc(e.k)+'</span><span class="d">'+esc(e.d)+'</span></div>';
+      }).join('');
+      Array.prototype.forEach.call(f.querySelectorAll('.fe'), function(row){ row.onclick=function(){ selectEvent(parseInt(row.getAttribute('data-id'),10)); }; });
+    }
+    var head = state.events.slice(0,12).map(function(e){ return '<span class="'+(e.sev==='may'?'m':'')+'">'+clockOf(e.t).slice(0,5)+' <b>'+esc(e.k)+'</b> '+esc(e.d)+'</span>'; }).join('');
+    el('tickerTrack').innerHTML = head || '<span>Standby — awaiting dispatch.</span>';
+    renderTimers(); renderUnits(); renderResources(); renderBenchmarks(); renderComms(); renderConditions();
+  }
+
+  function renderTimers(){
+    var arr = state.timerOrder.map(function(id){ return state.timers[id]; });
+    arr.forEach(tickTimer);
+    // --- critical escalation: surface any crit timer to the pinned top band ---
+    arr.forEach(function(t){ if (t.state!=='crit') t.critAlerted = false; });
+    var crit = arr.filter(function(t){ return t.state==='crit' && t.id!=='mayday'; }); // mayday has its own banner
+    var cb = el('critbar');
+    if (crit.length){
+      cb.classList.add('show');
+      cb.innerHTML = '<span class="lead">⚠ Critical</span>' + crit.map(function(t){
+        return '<span class="cchip'+(t.severe?' severe':'')+'"><span class="cl">'+esc(t.label)+'</span><span class="cv">'+timerText(t)+'</span></span>';
+      }).join('');
+      var fresh = false; crit.forEach(function(t){ if(!t.critAlerted){ t.critAlerted=true; fresh=true; } });
+      if (fresh) alertTone();
+      // badly overdue => louder: repeat an urgent tone on a cadence while any timer is "severe"
+      var anySevere = crit.some(function(t){ return t.severe; });
+      if (anySevere && now()-lastSevereTone > 5000){ lastSevereTone = now(); severeTone(); }
+    } else { cb.classList.remove('show'); cb.innerHTML=''; }
+    // command-bar PAR mirror (short overage form to fit the box)
+    var par = state.timers['par'];
+    if (par){ var prem = par.dueAt-now();
+      el('parClock').textContent = par.state==='green' ? '✓' : (prem>=0 ? hhmm(prem) : '+'+hhmm(-prem));
+      el('parClock').className = 'val'+(par.state==='crit'?' bad':par.state==='warn'?' warn':par.state==='green'?' ok':''); }
+    el('timerCount').textContent = arr.filter(function(t){return t.state!=='green';}).length + ' active';
+    arr.sort(function(a,b){ return (RANK[a.state]-RANK[b.state]) || (timerUrgency(a)-timerUrgency(b)); });
+    var box = el('timers');
+    if (!arr.length){ box.innerHTML='<div class="empty" style="color:var(--muted);font-size:13px;">No active timers.</div>'; return; }
+    box.innerHTML = arr.map(function(t){
+      var id = esc(t.id);
+      var adj = t.state==='green' ? '<span class="clr">✓ tap to clear</span>'
+        : '<span class="adj"><button data-adj="'+id+'" data-d="-1" title="tighten 1 min">−</button>'+
+          '<button data-adj="'+id+'" data-d="1" title="extend 1 min">+</button></span>';
+      return '<div class="trow '+t.state+(t.severe?' severe':'')+'" data-id="'+id+'">'+
+             '<span class="lab">'+esc(t.label)+'<div class="hint">'+esc(t.hint||'')+'</div></span>'+
+             adj + '<span class="cd">'+timerText(t)+'</span></div>';
+    }).join('');
+    Array.prototype.forEach.call(box.querySelectorAll('.trow.green'), function(r){
+      r.onclick = function(){ dropTimer(r.getAttribute('data-id')); render(); };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('.adj button'), function(btn){
+      btn.onclick = function(ev){ ev.stopPropagation(); nudge(btn.getAttribute('data-adj'), parseInt(btn.getAttribute('data-d'),10)); };
+    });
+  }
+
+  function renderUnits(){
+    var box=el('units'), ids=state.order;
+    var onScene = ids.filter(function(i){ return state.units[i].status!=='enroute'; }).length;
+    el('onSceneCount').textContent = onScene+' on scene';
+    if (!ids.length){ box.innerHTML='<div class="empty" style="color:var(--muted);font-size:13px;">No units yet.</div>'; return; }
+    box.innerHTML = ids.map(function(i){
+      var u=state.units[i], air='';
+      if (u.status==='interior' && u.onAirSince){ var ms=now()-u.onAirSince, cls=ms>=20*MIN?'bad':ms>=15*MIN?'warn':''; air='<span class="air '+cls+'">air '+hhmm(ms)+'</span>'; }
+      return '<div class="unit"><span class="id">'+esc(u.id)+'</span><span class="st '+u.status+'">'+u.status+'</span><span class="as">'+esc(u.assignment||'')+'</span>'+air+'</div>';
+    }).join('');
+  }
+  function renderResources(){
+    var ids=state.order, c={enroute:0,onscene:0,staging:0,interior:0,rehab:0,rit:0};
+    ids.forEach(function(i){ c[state.units[i].status]=(c[state.units[i].status]||0)+1; });
+    el('cScene').textContent = c.onscene+c.interior+c.rehab+c.rit; el('cEnroute').textContent=c.enroute; el('cStaging').textContent=c.staging;
+    el('resNote').textContent = ids.length ? (c.interior+' interior · '+c.rit+' RIT · '+c.rehab+' rehab') : 'Awaiting units.';
+  }
+  function renderBenchmarks(){
+    el('benchmarks').innerHTML = state.benchmarks.map(function(b){
+      return '<div class="bench'+(b.done?' done':'')+'"><span class="box">'+(b.done?'✓':'')+'</span><span class="lbl">'+esc(b.label)+'</span>'+(b.done?'<span class="at">'+clockOf(b.at).slice(0,5)+'</span>':'')+'</div>';
+    }).join('');
+  }
+  function renderComms(){
+    var ids=Object.keys(state.talkgroups);
+    el('talkgroups').innerHTML = ids.length ? ids.map(function(id){ return '<div class="tgline"><b>tg '+esc(id)+'</b> — '+esc(state.talkgroups[id])+'</div>'; }).join('') : '<div class="tgline">No talkgroups bound.</div>';
+  }
+  function renderConditions(){ var c=state.conditions; el('condWind').textContent=c.wind||'—'; el('condTemp').textContent=c.temp||'—'; el('condWater').textContent=c.water||'—'; }
+
+  function selectEvent(id){
+    selectedId=id; var e=state.events.find(function(x){return x.id===id;}); if(!e) return;
+    var r=e.raw||{}, kv='';
+    function row(k,v){ if(v!==undefined&&v!==null&&v!=='') kv+='<div class="k">'+esc(k)+'</div><div>'+esc(String(v))+'</div>'; }
+    row('Type',e.k); row('Unit',r.unit); row('Assignment',r.assignment); row('Status',r.status);
+    row('Talkgroup',r.talkgroupId); row('Traffic',r.text); row('Address',r.address); row('Note',r.note); row('Result',r.result);
+    el('detail').innerHTML = '<div class="hd"><h2>Display window</h2><span class="spacer"></span><span class="tag">'+esc(e.sev)+'</span></div>'+
+      '<div class="dt-type">'+esc(e.k)+' — '+esc(e.d)+'</div><div class="dt-time">'+clockOf(e.t)+'</div>'+
+      '<div class="kv">'+(kv||'<div class="k">detail</div><div>no further fields</div>')+'</div>';
+    render();
+  }
+
+  // ------------------------------------------------------------------ mayday + PAR controls
+  function showMayday(evt){ el('maydayText').innerHTML='Unit <b>'+esc(evt.unit)+'</b>'+(evt.note?(' · '+esc(evt.note)):'')+' · '+clockOf(evt.at||now()); el('mayday').classList.add('show'); beep(); }
+  window.ackMayday = function(){ el('mayday').classList.remove('show'); };
+  window.callPAR = function(){ greenTimer('par','PAR requested by command'); feed('bench','PAR','PAR requested by command', now()); render(); };
+
+  // ------------------------------------------------------------------ 1-second tick
+  setInterval(function(){
+    if (state.incident){ var elp=now()-state.incident.dispatchedAt, ev=el('elapsed'); ev.textContent=hhmm(elp); ev.className='val'+(elp>=20*MIN?' bad':elp>=10*MIN?' warn':''); }
+    renderTimers();
+    if (state.order.some(function(i){ return state.units[i].status==='interior'; })) renderUnits();
+  }, 1000);
+
+  var actx;
+  function beep(){ try { actx=actx||new (window.AudioContext||window.webkitAudioContext)(); var o=actx.createOscillator(),g=actx.createGain(); o.type='square'; o.frequency.value=880; o.connect(g); g.connect(actx.destination); g.gain.setValueAtTime(0.15,actx.currentTime); o.start(); o.stop(actx.currentTime+0.6); } catch(e){} }
+  // softer, lower one-shot when a timer newly crosses into critical (distinct from the mayday tone)
+  function alertTone(){ try { actx=actx||new (window.AudioContext||window.webkitAudioContext)(); var o=actx.createOscillator(),g=actx.createGain(); o.type='sine'; o.frequency.value=392; o.connect(g); g.connect(actx.destination); g.gain.setValueAtTime(0.09,actx.currentTime); o.start(); o.stop(actx.currentTime+0.22); } catch(e){} }
+  // louder, repeating urgent double-tone while a timer is badly overdue ("severe")
+  var lastSevereTone = 0;
+  function severeTone(){ try { actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    [0,0.18].forEach(function(dt){ var o=actx.createOscillator(),g=actx.createGain(); o.type='square'; o.frequency.value=660;
+      o.connect(g); g.connect(actx.destination); g.gain.setValueAtTime(0.14,actx.currentTime+dt); o.start(actx.currentTime+dt); o.stop(actx.currentTime+dt+0.13); }); } catch(e){} }
+
+  // ================================================================== DEMO SIMULATION
+  var demoTimers = [];
+  function stopDemo(){ demoTimers.forEach(clearTimeout); demoTimers=[]; }
+  function resetState(){
+    state.incident=null; state.units={}; state.order=[]; state.talkgroups={}; state.events=[]; state.mayday=null;
+    state.conditions={}; state.timers={}; state.timerOrder=[]; state.seq=0; selectedId=null;
+    state.benchmarks.forEach(function(b){ b.done=false; b.at=null; });
+    el('mayday').classList.remove('show'); render();
+  }
+  var SCENARIO = [
+    [0,  { type:'dispatch', incidentType:'Structure Fire — Residential', address:'1420 Oakcrest Ave', conditions:{ wind:'14 mph NW', temp:'38°F', water:'hydrant — pending' } }],
+    [1,  { type:'radio', unit:'DISPATCH', talkgroupId:'101', talkgroupLabel:'Fireground 1', text:'Box alarm — smoke showing, reported occupants' }],
+    [2,  { type:'unit_enroute', unit:'E12', assignment:'first due' }],
+    [3,  { type:'unit_enroute', unit:'T7', assignment:'truck co' }],
+    [3,  { type:'unit_enroute', unit:'B2', assignment:'command' }],
+    [4,  { type:'unit_enroute', unit:'M4', assignment:'medic' }],
+    [4,  { type:'unit_enroute', unit:'E19', assignment:'second due' }],
+    [7,  { type:'unit_onscene', unit:'E12', status:'onscene', assignment:'establishing water supply' }],
+    [8,  { type:'radio', unit:'E12', talkgroupId:'101', text:'On scene, 2-story wood frame, fire 2nd floor, going offensive' }],
+    [9,  { type:'unit_onscene', unit:'B2', status:'onscene', assignment:'COMMAND — Oakcrest Command' }],
+    [10, { type:'benchmark', key:'command' }],
+    [11, { type:'assignment', unit:'E12', status:'interior', assignment:'fire attack — 1¾" to 2nd floor' }],
+    [13, { type:'benchmark', key:'threesixty' }],
+    [14, { type:'unit_onscene', unit:'T7', status:'interior', assignment:'search & ventilation — 2nd floor' }],
+    [15, { type:'radio', unit:'B2', talkgroupId:'101', text:'All companies offensive, 2nd floor' }],
+    [17, { type:'unit_onscene', unit:'E19', status:'onscene', assignment:'backup line / RIT staged' }],
+    [18, { type:'assignment', unit:'E19', status:'rit', assignment:'Rapid Intervention Team' }],
+    [19, { type:'unit_onscene', unit:'M4', status:'staging', assignment:'medical staging' }],
+    [21, { type:'benchmark', key:'water' }],
+    [24, { type:'radio', unit:'T7', talkgroupId:'101', text:'Primary search underway 2nd floor' }],
+    [26, { type:'benchmark', key:'utilities' }],
+    [28, { type:'mayday', unit:'T7', note:'firefighter fallen through floor, 2nd fl rear' }],
+    [30, { type:'assignment', unit:'E19', status:'interior', assignment:'RIT deployed — locating T7', ritDeploy:true }],
+    [31, { type:'unit_enroute', unit:'E22', assignment:'additional company' }],
+    [31, { type:'radio', unit:'B2', talkgroupId:'101', text:'MAYDAY acknowledged, RIT deploying, PAR now' }],
+    [34, { type:'can_report', result:'Div 2 CAN — fire darkening down, needs vertical ventilation' }],
+    [33, { type:'par', result:'PAR complete — T7 located, RIT with member' }],
+    [33, { type:'mayday_resolved', note:'T7 located by RIT' }],
+    [36, { type:'unit_onscene', unit:'E22', status:'rit', assignment:'replacement RIT staged' }],
+    [38, { type:'benchmark', key:'search' }],
+    [40, { type:'radio', unit:'E19', talkgroupId:'101', text:'RIT out with member, conscious, to medic' }],
+    [40, { type:'transport_start', patient:'FF-T7', unit:'M4' }],
+    [42, { type:'assignment', unit:'T7', status:'rehab', assignment:'crew to rehab' }],
+    [45, { type:'transport_depart', patient:'FF-T7', dest:'Regional Trauma Center' }],
+    [46, { type:'under_control', note:'fire knocked down, under control' }],
+    [47, { type:'benchmark', key:'secondary' }],
+    [48, { type:'par', result:'all units accounted for' }],
+  ];
+  function runDemo(){
+    stopDemo(); resetState(); el('dot').className='dot ok'; el('statusText').textContent='demo';
+    SCENARIO.forEach(function(step){ demoTimers.push(setTimeout(function(){ intake(Object.assign({ at:now() }, step[1])); }, step[0]*1000*1.6)); });
+  }
+
+  // ================================================================== LIVE (real platform SSE)
+  function runLive(){
+    stopDemo(); el('statusText').textContent='connecting…'; el('dot').className='dot';
+    fetch(API+'/incidents').then(function(r){return r.json();}).then(function(list){
+      var inc=(list||[])[0];
+      if (inc) intake({ type:'dispatch', incidentType:(inc.data&&inc.data.incident_type)||'Incident', address:(inc.data&&inc.data.address)||inc.internalId||inc.id, at:now() });
+    }).catch(function(){});
+    var es; try { es=new EventSource(API+'/alerts/stream'); } catch(e){ el('dot').className='dot down'; el('statusText').textContent='disconnected'; return; }
+    es.onopen=function(){ el('dot').className='dot ok'; el('statusText').textContent='live'; };
+    es.onerror=function(){ el('dot').className='dot down'; el('statusText').textContent='disconnected'; };
+    es.addEventListener('radio.event', function(m){ try{ var e=JSON.parse(m.data), p=e.payload||{}; intake({ type:'radio', unit:p.unitDisplayName||p.radioUnitId, talkgroupId:p.talkgroupId, text:p.eventType, at:now() }); }catch(x){} });
+    es.addEventListener('mayday.declared', function(m){ try{ var e=JSON.parse(m.data), p=e.payload||{}; intake({ type:'mayday', unit:p.unitDisplayName||p.radioUnitId||'unknown', note:'tg '+(p.talkgroupId||'?'), at:now() }); }catch(x){} });
+    es.addEventListener('mayday.unassigned', function(m){ try{ var e=JSON.parse(m.data), p=e.payload||{}; intake({ type:'mayday', unit:p.unitDisplayName||p.radioUnitId||'unknown', note:'UNASSIGNED', at:now() }); }catch(x){} });
+    es.addEventListener('incident.declared', function(m){ try{ var e=JSON.parse(m.data), p=e.payload||{}; intake({ type:'dispatch', incidentType:p.incidentType||'Incident', address:p.address||p.id, at:now() }); }catch(x){} });
+  }
+
+  // ------------------------------------------------------------------ boot
+  el('strat').onclick = function(){ if(state.incident) intake({ type:'strategy', strategy: state.incident.strategy==='offensive'?'defensive':'offensive', note:'command decision' }); };
+  el('modeBtn').onclick = function(){ if (LIVE) location.href = location.pathname; else runDemo(); };
+  if (LIVE){ el('modeBtn').textContent='● live mode'; runLive(); } else { runDemo(); }
+})();
+</script>
+</body>
+</html>
