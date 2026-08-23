@@ -60,6 +60,30 @@ Making the rig swap fake parts for real ones (incl. a real radio):
   — a routine write must never delay a mayday. Guaranteed via priority lanes on one Core
   (reserved critical pool, admission control, shed routine under load) — *priority, not
   exclusion*; physical split into separate log servers is a capability for scale, not the default.
+- [ADR-0009: PII that leaks into the immutable log](./adr/ADR-0009-pii-leaked-into-the-immutable-log.md)
+  *(Proposed)* — the hard case ADR-0007 doesn't cover: *unclassified* PII (an EMS narrative, a
+  recorded/transcribed call) landing in a record we must keep. Resolved by keeping free-form
+  content out of the log entirely — encrypted, externalized, per-record-keyed, referenced by
+  `content_ref` — so leaked PII is erasable (destroy the key / delete the blob) while the log
+  stays immutable and the record survives its own redaction.
+
+- [ADR-0010: Authentication, roles, and tenant scoping](./adr/ADR-0010-auth-and-tenant-scoping.md)
+  — a `Principal` (userId/departmentId/roles) resolved at the edge from a signed token
+  (dependency-light HS256 dev JWT now; OIDC/JWKS swap-in later, same seam). Two global guards:
+  auth (permissive dev fallback, strict when `AUTH_REQUIRED=1`) + roles. Incidents and generic
+  records are tenant-scoped to the caller's department (another department's record reads as
+  404); SSE delivers own-department + ops-level events; `responder`/`officer`/`admin` gate
+  mutations. Verified in both modes; 59 backend tests.
+
+**Cross-cutting concern — PII program framework:**
+[PII-FRAMEWORK.md](./PII-FRAMEWORK.md) — the honest scoping above ADR-0007/0009: we cannot
+*prevent* PII leakage (humans put PII anywhere), so we **contain and remediate** instead.
+Event sourcing's log/read-model split lets us encrypt the (rarely-queried) log while keeping
+the (rebuildable, disposable) read model fast — so anything that leaks in is shreddable
+without perfect classification. Defines the **basic version** we ship now vs. the **deferred
+workstream** (plaintext fan-out to backups/indices/exports, detection, KMS at scale,
+external-system erasure). PII may be more complex than the rest of the platform; this keeps
+the revisit deliberate.
 
 ## Module catalog (screens to build)
 

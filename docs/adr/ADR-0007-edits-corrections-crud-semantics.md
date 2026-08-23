@@ -22,11 +22,29 @@ need?
 CRUD; underneath, the history is preserved — the original event never goes away, and current
 state is the *fold* of all events for the record.
 
-**2. Delete is a tombstone, never a physical delete.** A delete appends a `*.deleted` /
-`*.voided` event; the projector removes it from (or marks it inactive in) the read model.
-The record's history stays in the log, so you can always see it existed and was voided —
-by whom, when. This is the anti-tampering property: the only physical operation the log
-permits is *append*.
+**2. Delete is a tombstone, never a physical delete — and the voided row stays
+discoverable.** A delete appends a `*.deleted` / `*.voided` event; the projector marks the
+read-model row inactive (`deleted: true`, with `deletedAt`/`reason`) but **keeps the row** —
+it does not remove it. The record's history stays in the log, so you can always see it
+existed and was voided, by whom and when. This is the anti-tampering property: the only
+physical operation the log permits is *append*.
+
+Critically, a **lookup of a deleted record must not look the same as a lookup of one that
+never existed.** If a delete just made the record disappear, `GET /:id` would return a bare
+`404` — and a `404` cannot tell "this was reported and later voided" apart from "this was
+never a thing." For a records system that is the wrong answer, especially when someone is
+resolving a real id or event-id. So reads resolve to one of three distinct outcomes:
+
+- **active** → the live record;
+- **deleted** → a **tombstone** (HTTP `200`): `{ id, deleted: true, deletedAt, reason,
+  version, message, history }` — it confirms the record existed and was voided, and points
+  to the retained audit trail. The voided field data is not surfaced on the tombstone; it
+  stays recoverable through history for authorized audit;
+- **never existed** → a genuine `404`.
+
+The write path is stricter: editing or re-deleting a voided record is `410 Gone` (it
+existed, but you can't mutate it), deliberately *not* `404`. `list` excludes deleted rows by
+default; `?includeDeleted=1` surfaces them (voided, shown, not vanished).
 
 **3. Two stores, two roles.** The **immutable log** (Core) is the history and source of
 truth; the **read model** (projection) is a normal, mutable, query-optimized store holding
@@ -102,6 +120,10 @@ erasable. All manageable, none exotic.
 2. [x] Implement the reference edit flow on hydrant inspections (`PATCH`, soft-delete,
        `GET /:id/history`) as the template for every module. *(Done —
        `apps/api/src/modules/hydrant-inspections/` + `apps/web/hydrant.html`.)*
+2a.[x] Make a deleted-record lookup **discoverable**: `GET /:id` returns a tombstone (200)
+       for a voided record, `410 Gone` on the write path, `404` only when the id never
+       existed; `?includeDeleted=1` on list; UI shows voided rows. *(Done — `lookup()`/
+       `Tombstone`; tests cover tombstone vs. genuine-404.)*
 3. [x] Add optimistic-concurrency (expected version) to the edit path. *(Done — `expectedVersion`
        → 409 on conflict.)*
 4. [ ] Define the editability lifecycle (draft/submitted/closed) and enforce at the command layer.

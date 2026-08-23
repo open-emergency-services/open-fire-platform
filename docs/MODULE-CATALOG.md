@@ -13,6 +13,50 @@ store." When we're ready to add, say, a hydrant-maintenance page, the fields are
 Status legend: **Schema ✓** = fields generated and typed; **UI/API to build** = the screen
 and its Regular-tier endpoints aren't written yet. Everything below is Schema ✓.
 
+> **Update — all screens are now built.** Every screen in this catalog (plus the three
+> non-standard ones at the bottom) is generated as a data-entry form under `apps/web/modules/`
+> with an index at `apps/web/modules.html` (42 screens). They are produced from the schema by
+> `apps/web/scripts/gen-screens.mjs` and backed by **one** generic event-sourced records API,
+> `POST/GET/PATCH/DELETE /api/v1/records/:module` (`apps/api/src/modules/records/`) — so all
+> forms share the same CRUD-on-event-sourcing engine (edit = appended event, delete =
+> discoverable tombstone, full audit trail, optimistic concurrency; ADR-0005 / ADR-0007)
+> instead of a hand-written backend per module. Re-run the generator after the schema
+> regenerates. The original `hydrant-inspections` module/`hydrant.html` remain as the
+> hand-built reference implementation.
+>
+> **Now added on top of the base screens:**
+> - **Value-set dropdowns.** The schema generator emits a field→value-set map
+>   (`field-value-sets.generated.json`, recovered from the framework's `value_set` flag +
+>   the `format` reference), and the screen generator renders real `<select>` dropdowns
+>   (single) and multi-selects (for Multi-cardinality fields) instead of free text — 82 value
+>   sets across 13 modules.
+> - **Cross-screen linking.** A sub-record can attach to a parent: open a parent record's
+>   **related ▾** menu to create a child screen carrying `?parent=<module>:<id>`. The record
+>   stores `parentId`/`parentModule` (in the log's correlation), and a child screen filters its
+>   list to that parent and shows an attachment banner. Parents wired: `incident-core` →
+>   incident sub-forms, `crr-core` → CRR forms, `analysis` → analysis forms, `health-safety` →
+>   H&S forms.
+> - **Live pipeline.** Creating/updating an `incident-core` record publishes an
+>   `incident.declared` / `incident.updated` domain event on the SSE stream (ADR-0002), so the
+>   **command board** (live mode) and the **live incident view** show it the moment it's saved.
+> - **Unified incident model (canonical).** There is now **one** incident read model. An
+>   incident *is* an `incident-core` record: the projector folds `record.incident-core.*`
+>   events into the incident read model served at `/api/v1/incidents`, and radio traffic from
+>   the P25 seam correlates onto those same ids (the comms facet — transmissions, maydays,
+>   presence). Incident **creation is a single write path**: `POST /api/v1/incidents` now
+>   delegates to the records engine (`incident-core`) rather than emitting a separate
+>   `incident.created` event, so the command board, the incident-record screen, and the radio
+>   correlation all read/write the same record. (The legacy `incident.created` projection is
+>   retained only so any pre-existing logs still replay.) Verified end-to-end: screen-created
+>   incident → appears in `/incidents`; a bound talkgroup mayday lands on its comms facet;
+>   deleting the record drops it from the active incident list.
+> - **Fully event-sourced lifecycle.** `validate` and `submit` no longer mutate the read
+>   model — they append `incident.validated` / `incident.submitted` events that the projector
+>   folds in, so the whole incident lifecycle (created → validated → submitted →
+>   accepted/rejected) is derivable from the log and appears in the record's audit trail.
+>   Verified: create→validate→submit yields `created → incident.validated → incident.submitted`
+>   in `GET /records/incident-core/:id/history`, and the accepted status survives a full replay.
+
 ---
 
 ## A. Incident documentation — the run report *(Essential record + Regular guided form)*
