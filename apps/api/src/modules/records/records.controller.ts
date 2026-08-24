@@ -62,6 +62,20 @@ export class RecordsController {
     return this.svc.erasePii(module, id, p.departmentId);
   }
 
+  /** Lock (close) a record so it refuses edits until reopened (ADR-0007). */
+  @Roles('officer')
+  @Post(':id/lock')
+  lock(@Param('module') module: string, @Param('id') id: string, @CurrentPrincipal() p: Principal) {
+    return this.svc.setLock(module, id, true, p.departmentId);
+  }
+
+  /** Reopen a locked record for corrections. */
+  @Roles('officer')
+  @Post(':id/reopen')
+  reopen(@Param('module') module: string, @Param('id') id: string, @CurrentPrincipal() p: Principal) {
+    return this.svc.setLock(module, id, false, p.departmentId);
+  }
+
   @Roles('responder')
   @Patch(':id')
   update(

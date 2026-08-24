@@ -14,6 +14,9 @@ export interface GenericRecord {
   deleted: boolean;
   deletedAt?: string;
   deletedReason?: string;
+  /** Editability lifecycle (ADR-0007): a locked (closed/accepted) record refuses edits/deletes
+   *  until explicitly reopened. Corrections to a locked record require a reopen first. */
+  locked?: boolean;
   /** Cross-link: the record this one is attached to (e.g. a `fire` sub-record → its `incident-core`). */
   parentId?: string;
   parentModule?: string;

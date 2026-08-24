@@ -108,6 +108,11 @@ export class IncidentsService {
       nerisResponse = { error: err.message, payload: err.payload };
     }
     await this.appendIncidentEvent('incident.submitted', id, departmentId, { status, nerisId, nerisResponse });
+    // An accepted incident is closed: lock the underlying record so the run report can't be
+    // silently edited after it's on file. Corrections require an explicit reopen (ADR-0007).
+    if (status === IncidentStatus.Accepted) {
+      await this.records.setLock('incident-core', id, true, departmentId);
+    }
     return this.readModel.getOrThrow(departmentId, id);
   }
 

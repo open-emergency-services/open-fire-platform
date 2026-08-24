@@ -1,6 +1,7 @@
 import {
   ConflictException,
   GoneException,
+  HttpException,
   Injectable,
   Logger,
   NotFoundException,
@@ -29,12 +30,12 @@ export interface ParentRef { module: string; id: string; }
 
 // Event type is `record.<module>.<verb>` — the module lives in the type and the correlation,
 // so the immutable log stays the single source of truth for every module screen.
-const VERBS = ['created', 'updated', 'deleted', 'pii_erased'] as const;
+const VERBS = ['created', 'updated', 'deleted', 'pii_erased', 'locked', 'reopened'] as const;
 function typeFor(module: string, verb: (typeof VERBS)[number]): string {
   return `record.${module}.${verb}`;
 }
 function parseType(sourceType: string): { module: string; verb: string } | null {
-  const m = /^record\.(.+)\.(created|updated|deleted|pii_erased)$/.exec(sourceType);
+  const m = /^record\.(.+)\.(created|updated|deleted|pii_erased|locked|reopened)$/.exec(sourceType);
   return m ? { module: m[1], verb: m[2] } : null;
 }
 
@@ -118,6 +119,14 @@ export class RecordsService implements OnApplicationBootstrap {
     const id = randomUUID();
     const parent = opts?.parent;
     const departmentId = opts?.departmentId ?? DEFAULT_DEPT;
+    // Integrity: a sub-record may only attach to a live parent in the SAME department — no
+    // dangling or cross-tenant links.
+    if (parent) {
+      const p = this.model(parent.module).get(parent.id);
+      if (!p || p.deleted || p.departmentId !== departmentId) {
+        throw new NotFoundException(`Parent ${parent.module} record not found in this department`);
+      }
+    }
     const parentMeta = parent ? { parentId: parent.id, parentModule: parent.module } : {};
     // PII split: personal fields go to the vault, only a token enters the log (ADR-0007/0009).
     const { pii, rest } = this.splitPii(module, data);
@@ -160,6 +169,7 @@ export class RecordsService implements OnApplicationBootstrap {
 
   async update(module: string, id: string, changes: Data, expectedVersion?: number, reason?: string, departmentId?: string): Promise<GenericRecord> {
     const rec = this.getOrThrow(module, id, departmentId);
+    this.assertUnlocked(rec);
     this.checkVersion(rec, expectedVersion);
     // PII changes: merge onto the vaulted PII (never into the log) and carry a fresh token.
     const { pii, rest } = this.splitPii(module, changes);
@@ -188,6 +198,7 @@ export class RecordsService implements OnApplicationBootstrap {
 
   async remove(module: string, id: string, expectedVersion?: number, reason?: string, departmentId?: string): Promise<void> {
     const rec = this.getOrThrow(module, id, departmentId);
+    this.assertUnlocked(rec);
     this.checkVersion(rec, expectedVersion);
     const { event } = await this.store.append({
       event_id: randomUUID(),
@@ -295,6 +306,28 @@ export class RecordsService implements OnApplicationBootstrap {
     }
   }
 
+  /** Editability lifecycle (ADR-0007): a locked record refuses edits until reopened (423 Locked). */
+  private assertUnlocked(rec: GenericRecord): void {
+    if (rec.locked) throw new HttpException(`This ${rec.module} record is locked; reopen it before editing`, 423);
+  }
+
+  /** Lock (close) or reopen a record. Corrections to a locked record require a reopen first. */
+  async setLock(module: string, id: string, locked: boolean, departmentId?: string): Promise<GenericRecord> {
+    const rec = this.getOrThrow(module, id, departmentId);
+    if (!!rec.locked === locked) return rec; // no-op
+    const { event } = await this.store.append({
+      event_id: randomUUID(),
+      source: 'ui',
+      source_type: typeFor(module, locked ? 'locked' : 'reopened'),
+      occurred_at: new Date().toISOString(),
+      raw: { id, module },
+      normalized: { id, module },
+      correlation: { record_id: id, module, department_id: rec.departmentId },
+    });
+    this.project(event, module);
+    return this.getOrThrow(module, id);
+  }
+
   private project(e: StoredEvent, module: string): void {
     const n = e.normalized as {
       id: string; departmentId?: string; data?: Data; changes?: Data; reason?: string;
@@ -322,6 +355,9 @@ export class RecordsService implements OnApplicationBootstrap {
     } else if (e.source_type === typeFor(module, 'pii_erased')) {
       const rec = model.get(n.id);
       if (rec && rec.pii) { rec.pii = { ...rec.pii, erased: true }; rec.version += 1; rec.updatedAt = ts; }
+    } else if (e.source_type === typeFor(module, 'locked') || e.source_type === typeFor(module, 'reopened')) {
+      const rec = model.get(n.id);
+      if (rec) { rec.locked = e.source_type === typeFor(module, 'locked'); rec.version += 1; rec.updatedAt = ts; }
     }
   }
 }

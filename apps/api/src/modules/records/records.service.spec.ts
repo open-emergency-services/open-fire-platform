@@ -92,6 +92,38 @@ describe('RecordsService (generic module engine)', () => {
     expect(r2.data.first_name).toBe('Ann');
   });
 
+  it('locks a record: edits/deletes refused until reopened (editability lifecycle)', async () => {
+    const rec = await svc.create('fire', { fire_cause: 'electrical' });
+    await svc.setLock('fire', rec.id, true);
+    await expect(svc.update('fire', rec.id, { fire_cause: 'other' })).rejects.toThrow(/locked/i);
+    await expect(svc.remove('fire', rec.id)).rejects.toThrow(/locked/i);
+    await svc.setLock('fire', rec.id, false); // reopen
+    const upd = await svc.update('fire', rec.id, { fire_cause: 'other' });
+    expect(upd.data.fire_cause).toBe('other');
+    // lock state survives replay
+    const svc2 = new RecordsService(store, events, undefined);
+    await svc2.onApplicationBootstrap();
+    await svc2.setLock('fire', rec.id, true);
+    const svc3 = new RecordsService(store, events, undefined);
+    await svc3.onApplicationBootstrap();
+    expect(svc3.getOrThrow('fire', rec.id).locked).toBe(true);
+  });
+
+  it('rejects a sub-record whose parent is missing or in another department', async () => {
+    const inc = await svc.create('incident-core', { incident_internal_id: 'X' }, { departmentId: 'DEPT_A' });
+    // dangling parent
+    await expect(
+      svc.create('fire', { a: 1 }, { departmentId: 'DEPT_A', parent: { module: 'incident-core', id: 'nope' } }),
+    ).rejects.toThrow(/not found/i);
+    // cross-tenant parent
+    await expect(
+      svc.create('fire', { a: 1 }, { departmentId: 'DEPT_B', parent: { module: 'incident-core', id: inc.id } }),
+    ).rejects.toThrow(/not found/i);
+    // valid parent, same dept
+    const ok = await svc.create('fire', { a: 1 }, { departmentId: 'DEPT_A', parent: { module: 'incident-core', id: inc.id } });
+    expect(ok.parentId).toBe(inc.id);
+  });
+
   it('rejects a stale edit (optimistic concurrency)', async () => {
     const rec = await svc.create('medical', { x: 1 });
     await svc.update('medical', rec.id, { x: 2 }); // now v2

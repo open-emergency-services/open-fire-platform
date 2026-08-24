@@ -63,8 +63,18 @@ describe('IncidentsService (event-sourced create + validate + submit)', () => {
     const s = await svc.submit('DEMO_DEPT', inc.id, 'ENT-1');
     expect(s.status).toBe('accepted');
     const hist = await records.history('incident-core', inc.id);
-    expect(hist.map((h) => h.type)).toEqual(['created', 'incident.validated', 'incident.submitted']);
+    // acceptance also locks the record — that lock is part of the audit trail
+    expect(hist.map((h) => h.type)).toEqual(['created', 'incident.validated', 'incident.submitted', 'locked']);
     expect((await rebuilt()).getOrThrow('DEMO_DEPT', inc.id).status).toBe('accepted');
+  });
+
+  it('locks the incident record once accepted — edits are then refused', async () => {
+    const inc = await svc.create('DEMO_DEPT', 'RUN-6', FULL);
+    await svc.validate('DEMO_DEPT', inc.id, 'ENT-1');
+    const s = await svc.submit('DEMO_DEPT', inc.id, 'ENT-1');
+    expect(s.status).toBe('accepted');
+    expect(records.getOrThrow('incident-core', inc.id).locked).toBe(true);
+    await expect(records.update('incident-core', inc.id, { note: 'tweak' })).rejects.toThrow(/locked/i);
   });
 
   it('submitting before validating is rejected', async () => {
