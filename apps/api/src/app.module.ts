@@ -10,6 +10,7 @@ import { PiiModule } from './pii/pii.module';
 import { IngestModule } from './ingest/ingest.module';
 import { HydrantInspectionsModule } from './modules/hydrant-inspections/hydrant-inspections.module';
 import { RecordsModule } from './modules/records/records.module';
+import { InsightsModule } from './insights/insights.module';
 
 /**
  * Wave-0 API. As modules are added (scheduling, responder, ePCR…), each becomes
@@ -28,6 +29,7 @@ import { RecordsModule } from './modules/records/records.module';
     EventsModule,
     HydrantInspectionsModule,
     RecordsModule,
+    InsightsModule,
   ],
 })
 export class AppModule {}

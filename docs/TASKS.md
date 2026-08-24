@@ -19,8 +19,11 @@ Grounded in the ADR action items, code notes, and BACKLOG as of this writing.
 - [x] **F4. Dashboards under auth** (ADR-0010 #3) — command board + live incident view present a
   token when `AUTH_REQUIRED=1` (login redirect + token use), so they work with auth on. —
   verified: no token → 401, token → 200, SSE via `?access_token`; `login.html` stores `ofp_token`.
-- [ ] **F5. Unmapped-review surface** (ADR-0006 #4) — endpoint + tiny screen listing distinct
+- [x] **F5. Unmapped-review surface** (ADR-0006 #4) — endpoint + tiny screen listing distinct
   `unmapped` keys per source; the capture-everything payoff (know what the standard didn't model).
+  — `GET /api/v1/insights/unmapped` (officer-gated) rolls the log up per source into key + count +
+  shape + first/last-seen, deliberately never echoing values (PII-safe); `unmapped.html` renders it.
+  Verified: officer 200, responder 403, anon 401, no value leak; 3 unit tests.
 - [ ] **F6. Configurable timer standards** (BACKLOG) — server-delivered defaults + per-incident /
   per-department override for the command board, replacing the hardcoded `STANDARDS` table.
 - [ ] **F7. Incident-type picker** — use the generated NERIS incident-type hierarchy (128 types)

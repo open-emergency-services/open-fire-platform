@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Open Fire Platform — Unmapped Review</title>
+<style>
+  :root{--bg:#0e1116;--panel:#161b22;--panel2:#1c2230;--line:#2a3140;--text:#e6edf3;--muted:#8b98a9;--accent:#4aa3ff;--ok:#3fb950;--warn:#d29922;--bad:#ff3b30;}
+  *{box-sizing:border-box;} body{margin:0;font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);}
+  header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;}
+  header h1{font-size:15px;margin:0;font-weight:600;} header a{color:var(--accent);font-size:12px;text-decoration:none;}
+  .spacer{flex:1;} .api{color:var(--muted);font-size:11px;font-family:ui-monospace,monospace;}
+  .wrap{max-width:1000px;margin:0 auto;padding:18px;}
+  .lead{color:var(--muted);font-size:13px;max-width:78ch;margin:0 0 16px;}
+  .lead code{color:var(--text);}
+  .bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;font-size:12px;}
+  input{background:#0e131b;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:6px 9px;font:inherit;font-size:12px;}
+  button{background:var(--accent);color:#04122b;border:0;border-radius:7px;padding:7px 14px;font-weight:700;cursor:pointer;font:inherit;}
+  .src{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px;}
+  .src h2{font-size:14px;margin:0 0 2px;font-family:ui-monospace,monospace;color:var(--accent);}
+  .src .meta{font-size:11px;color:var(--muted);margin-bottom:10px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;} th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;}
+  td.k{font-family:ui-monospace,monospace;color:var(--text);} td.n{color:var(--muted);}
+  .pill{font-size:10px;padding:1px 7px;border-radius:10px;background:rgba(74,163,255,.14);color:var(--accent);font-family:ui-monospace,monospace;}
+  .msg{font-size:13px;color:var(--muted);padding:14px 0;} .msg.err{color:var(--bad);}
+  .empty{color:var(--ok);padding:14px 0;font-size:13px;}
+  .note{margin-top:6px;font-size:11px;color:#6b7688;max-width:78ch;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🔎 Unmapped review</h1>
+  <a href="modules.html">← modules</a>
+  <a href="index.html" style="margin-left:10px;">live view</a>
+  <span class="spacer"></span>
+  <span class="api" id="who">—</span>
+</header>
+<div class="wrap">
+  <p class="lead">Capture-everything ingestion (ADR-0006) keeps every inbound field, even ones the
+  standard doesn't model — they land in <code>unmapped</code> instead of being dropped. This is the
+  ledger of those "known unknowns": what each source is sending that we don't yet map, so adding a
+  slot is a deliberate decision instead of a discovery after the data is gone.</p>
+  <div class="bar">
+    <input id="api" placeholder="http://localhost:3000/api/v1" style="width:260px;" />
+    <button id="reload">Refresh</button>
+    <a href="login.html" style="color:var(--accent);text-decoration:none;">Sign in ↗</a>
+    <span class="spacer" style="flex:1;"></span>
+    <span id="summary" class="api"></span>
+  </div>
+  <div id="out"><div class="msg">Loading…</div></div>
+  <p class="note">Keys and value shapes only — the review never shows the raw values, since an
+  unmapped payload can carry PII the standard didn't model. Officer sign-in required.</p>
+</div>
+<script>
+(function(){
+  function ls(k,v){ try { return v===undefined ? localStorage.getItem(k) : localStorage.setItem(k,v); } catch(e){ return null; } }
+  var params = new URLSearchParams(location.search);
+  var apiInput = document.getElementById('api');
+  apiInput.value = params.get('api') || ls('ofp_api') || 'http://localhost:3000/api/v1';
+  var TOKEN = params.get('token') || ls('ofp_token');
+  var out = document.getElementById('out');
+  function esc(s){ return String(s).replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+  function whoami(){
+    var w = document.getElementById('who');
+    if (!TOKEN){ w.textContent = 'not signed in'; return; }
+    try { var p = JSON.parse(atob(TOKEN.split('.')[1])); w.textContent = p.dept + ' · [' + (p.roles||[]).join(', ') + ']'; }
+    catch(e){ w.textContent = 'token set'; }
+  }
+  function render(rep){
+    document.getElementById('summary').textContent =
+      rep.totalEvents + ' events · ' + rep.distinctKeys + ' distinct unmapped keys · ' + rep.sources.length + ' source(s)';
+    if (!rep.sources.length){ out.innerHTML = '<div class="empty">✓ Nothing unmapped — every source is fully modeled.</div>'; return; }
+    var html = '';
+    rep.sources.forEach(function(s){
+      html += '<div class="src"><h2>' + esc(s.source) + '</h2>' +
+        '<div class="meta">' + s.events + ' event(s) · ' + s.keys.length + ' unmapped key(s)</div>' +
+        '<table><thead><tr><th>Key</th><th>Seen</th><th>Shape</th><th>First</th><th>Last</th></tr></thead><tbody>';
+      s.keys.forEach(function(k){
+        html += '<tr><td class="k">' + esc(k.key) + '</td><td class="n">' + k.count + '</td>' +
+          '<td><span class="pill">' + esc(k.sampleType) + '</span></td>' +
+          '<td class="n">' + esc((k.firstSeen||'').slice(0,19).replace('T',' ')) + '</td>' +
+          '<td class="n">' + esc((k.lastSeen||'').slice(0,19).replace('T',' ')) + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    });
+    out.innerHTML = html;
+  }
+  function load(){
+    var base = apiInput.value.replace(/\/$/,''); ls('ofp_api', base);
+    out.innerHTML = '<div class="msg">Loading…</div>';
+    fetch(base + '/insights/unmapped', { headers: TOKEN ? { authorization: 'Bearer ' + TOKEN } : {} })
+      .then(function(r){
+        if (r.status === 401) throw new Error('Sign in required.');
+        if (r.status === 403) throw new Error('Officer role required to view the unmapped ledger.');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(render)
+      .catch(function(e){ out.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; });
+  }
+  document.getElementById('reload').onclick = load;
+  whoami(); load();
+})();
+</script>
+</body>
+</html>
