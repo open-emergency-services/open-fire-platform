@@ -8,5 +8,8 @@
     "generate": "node scripts/generate.mjs",
     "build": "tsc -p tsconfig.json"
   },
-  "license": "AGPL-3.0-or-later"
+  "license": "AGPL-3.0-or-later",
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
 }

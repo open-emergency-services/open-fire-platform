@@ -251,7 +251,12 @@
 <script>
 (function () {
   var params = new URLSearchParams(location.search);
-  var API = params.get('api') || 'http://localhost:3000/api/v1';
+  function ls(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+  var API = params.get('api') || ls('ofp_api') || 'http://localhost:3000/api/v1';
+  // Auth: send a token when one is present (needed once the API runs with AUTH_REQUIRED=1).
+  var TOKEN = params.get('token') || ls('ofp_token');
+  function authHeaders(){ return TOKEN ? { authorization: 'Bearer ' + TOKEN } : {}; }
+  function sseAuth(){ return TOKEN ? ('?access_token=' + encodeURIComponent(TOKEN)) : ''; }
   var LIVE = params.get('live') === '1';
   var DEMO = !LIVE;
   // ms per "minute". Compressed in demo so the timer lifecycle is visible in ~80s;
@@ -645,11 +650,14 @@
   // ================================================================== LIVE (real platform SSE)
   function runLive(){
     stopDemo(); el('statusText').textContent='connecting…'; el('dot').className='dot';
-    fetch(API+'/incidents').then(function(r){return r.json();}).then(function(list){
+    fetch(API+'/incidents', { headers: authHeaders() }).then(function(r){
+      if (r.status===401){ el('dot').className='dot down'; el('statusText').textContent='sign in required'; throw new Error('401'); }
+      return r.json();
+    }).then(function(list){
       var inc=(list||[])[0];
       if (inc) intake({ type:'dispatch', incidentType:(inc.data&&inc.data.incident_type)||'Incident', address:(inc.data&&inc.data.address)||inc.internalId||inc.id, at:now() });
     }).catch(function(){});
-    var es; try { es=new EventSource(API+'/alerts/stream'); } catch(e){ el('dot').className='dot down'; el('statusText').textContent='disconnected'; return; }
+    var es; try { es=new EventSource(API+'/alerts/stream'+sseAuth()); } catch(e){ el('dot').className='dot down'; el('statusText').textContent='disconnected'; return; }
     es.onopen=function(){ el('dot').className='dot ok'; el('statusText').textContent='live'; };
     es.onerror=function(){ el('dot').className='dot down'; el('statusText').textContent='disconnected'; };
     es.addEventListener('radio.event', function(m){ try{ var e=JSON.parse(m.data), p=e.payload||{}; intake({ type:'radio', unit:p.unitDisplayName||p.radioUnitId, talkgroupId:p.talkgroupId, text:p.eventType, at:now() }); }catch(x){} });

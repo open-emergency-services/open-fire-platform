@@ -8,16 +8,17 @@ Grounded in the ADR action items, code notes, and BACKLOG as of this writing.
 
 ## Functional — do now
 
-- [ ] **F1. Verify the end-to-end demo runs** — simulator → API → command board / live view in
+- [x] **F1. Verify the end-to-end demo runs** — simulator → API → command board / live view in
   permissive dev. Fix any breakage from the records/auth/unification changes. *(the whole "it
-  works" story rides on this)*
-- [ ] **F2. Editability lifecycle** (ADR-0007 #4) — a submitted/accepted incident is amend-only;
+  works" story rides on this)* — verified: INC-2026-000481, mayday folded into the unified model.
+- [x] **F2. Editability lifecycle** (ADR-0007 #4) — a submitted/accepted incident is amend-only;
   a closed record is locked. Enforce at the command layer for incidents + a generic record
-  lifecycle hook.
-- [ ] **F3. Cross-record integrity** — a child record's `parent` must exist and be the same
-  department; reject dangling/cross-tenant parents.
-- [ ] **F4. Dashboards under auth** (ADR-0010 #3) — command board + live incident view present a
-  token when `AUTH_REQUIRED=1` (login redirect + token use), so they work with auth on.
+  lifecycle hook. — lock/reopen verbs, accept auto-locks, edits on a locked record → 423; tested.
+- [x] **F3. Cross-record integrity** — a child record's `parent` must exist and be the same
+  department; reject dangling/cross-tenant parents. — dangling/cross-tenant parent → 404; tested.
+- [x] **F4. Dashboards under auth** (ADR-0010 #3) — command board + live incident view present a
+  token when `AUTH_REQUIRED=1` (login redirect + token use), so they work with auth on. —
+  verified: no token → 401, token → 200, SSE via `?access_token`; `login.html` stores `ofp_token`.
 - [ ] **F5. Unmapped-review surface** (ADR-0006 #4) — endpoint + tiny screen listing distinct
   `unmapped` keys per source; the capture-everything payoff (know what the standard didn't model).
 - [ ] **F6. Configurable timer standards** (BACKLOG) — server-delivered defaults + per-incident /
@@ -45,5 +46,12 @@ Grounded in the ADR action items, code notes, and BACKLOG as of this writing.
 - [ ] D9. DB-backed user store; auth-event auditing; rate limiting / admission control.
 - [ ] D10. Recordings / transcription / real-time translation (BACKLOG) — biggest leaked-PII source;
   build on ADR-0009.
+
+## Surfaced while working (fixed in place)
+
+- [x] **Reproducible schema build** — `@ofp/neris-schema` had no pinned `typescript`, so `npm run
+  build` (and CI/Docker) grabbed whatever `npx` resolved — a newer TS that errors on
+  `moduleResolution: "node"`. Pinned `typescript ^5.5.0` as a devDependency and committed
+  `pnpm-lock.yaml` so installs and the schema build are deterministic.
 
 _New items surfaced while working are appended to the relevant list._

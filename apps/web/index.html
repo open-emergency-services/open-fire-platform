@@ -90,7 +90,11 @@
 <script>
 (function () {
   var params = new URLSearchParams(location.search);
-  var API = params.get('api') || 'http://localhost:3000/api/v1';
+  function ls(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+  var API = params.get('api') || ls('ofp_api') || 'http://localhost:3000/api/v1';
+  var TOKEN = params.get('token') || ls('ofp_token');
+  function authHeaders(){ return TOKEN ? { authorization: 'Bearer ' + TOKEN } : {}; }
+  function sseAuth(){ return TOKEN ? ('?access_token=' + encodeURIComponent(TOKEN)) : ''; }
   document.getElementById('apiLabel').textContent = API;
 
   var incidents = {};   // id -> { record, tx: { callId -> row } }
@@ -107,7 +111,7 @@
 
   // ---- initial snapshot (immediate display; does not depend on the stream) ----
   function loadSnapshot(){
-    fetch(API + '/incidents').then(function(r){ return r.json(); }).then(function(list){
+    fetch(API + '/incidents', { headers: authHeaders() }).then(function(r){ return r.json(); }).then(function(list){
       (list||[]).forEach(function(rec){ seedIncident(rec); });
       renderIncidents();
     }).catch(function(){ /* stream will still populate */ });
@@ -208,7 +212,7 @@
 
   function connect(){
     var es;
-    try { es = new EventSource(API + '/alerts/stream'); }
+    try { es = new EventSource(API + '/alerts/stream' + sseAuth()); }
     catch (e) { setStatus('down'); return; }
     es.onopen = function(){ setStatus('ok'); };
     es.onerror = function(){ setStatus('down'); /* EventSource auto-reconnects */ };
