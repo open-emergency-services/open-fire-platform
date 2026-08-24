@@ -154,8 +154,12 @@ Adding an endpoint to the **Essential** tier requires a high bar, applied delibe
        Experimental: none) and document it for integrators.
 4. [ ] Mark Experimental responses unstable (`X-OFP-Stability: experimental`) and keep it
        out of the published stable contract / OpenAPI for Tiers 1–2.
-5. [ ] Enforce the write rule in code: only the Essential ingest writes to the Core;
-       Regular/Experimental cause change via ingest or events.
+5. [x] Enforce the write rule in code: only the Essential ingest writes to the Core;
+       Regular/Experimental cause change via ingest or events. *(In-process teeth done:
+       `core/core-write-invariant.spec.ts` fails CI if any module outside the sanctioned
+       allowlist calls `store.append`, or if the store gains an UPDATE/DELETE path — the
+       Core stays append-only and Core-writes stay confined. The physical tier split
+       (Regular reaching the Core only via the ingest network call) is deployment, D-series.)*
 6. [ ] Deploy each tier as its own stateless service (≥2 replicas behind the LB, ADR-0004);
        add a per-department Experimental deployment pattern.
 7. [ ] Add the governance bar (above) to CONTRIBUTING so "make it Essential" has a gate.

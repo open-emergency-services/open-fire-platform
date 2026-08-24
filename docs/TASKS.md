@@ -42,8 +42,11 @@ Grounded in the ADR action items, code notes, and BACKLOG as of this writing.
   drives it (no drift): personnel.html badges each vaulted field 🔒, shows the masking note, renders
   🔒-masked cells, and adds officer reveal + erase-PII per row. Also **added `last_4_ssn` to the
   personnel PII policy** (was unvaulted). Verified headlessly + over HTTP; +1 unit test.
-- [ ] **F10. Essential-writes-only guard** (ADR-0005 #5) — enforce in code that only the Essential
-  ingest path writes to the Core (architectural invariant).
+- [x] **F10. Essential-writes-only guard** (ADR-0005 #5) — enforce in code that only the Essential
+  ingest path writes to the Core (architectural invariant). — `core-write-invariant.spec.ts`
+  (ArchUnit-style, runs in CI) confines `store.append` to a sanctioned allowlist and asserts the
+  store stays append-only (no UPDATE/DELETE/TRUNCATE). Proven with a negative test (a rogue writer
+  fails). Physical tier split (Regular → ingest over the network) stays D-series.
 
 ## Deployment / field — later (not needed to be functional)
 
