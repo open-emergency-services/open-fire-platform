@@ -24,8 +24,11 @@ Grounded in the ADR action items, code notes, and BACKLOG as of this writing.
   — `GET /api/v1/insights/unmapped` (officer-gated) rolls the log up per source into key + count +
   shape + first/last-seen, deliberately never echoing values (PII-safe); `unmapped.html` renders it.
   Verified: officer 200, responder 403, anon 401, no value leak; 3 unit tests.
-- [ ] **F6. Configurable timer standards** (BACKLOG) — server-delivered defaults + per-incident /
+- [x] **F6. Configurable timer standards** (BACKLOG) — server-delivered defaults + per-incident /
   per-department override for the command board, replacing the hardcoded `STANDARDS` table.
+  — `GET /api/v1/standards/timers` (any member) returns defaults + dept override + effective merge;
+  `PUT` (officer) sets the dept override, event-sourced + rebuilt on boot. Command board fetches
+  and merges before creating timers, shows platform-vs-customized. Verified + 5 unit tests.
 - [ ] **F7. Incident-type picker** — use the generated NERIS incident-type hierarchy (128 types)
   in the incident-core screen instead of free text.
 - [ ] **F8. OpenAPI contract** (ADR-0001 #2) — generate/serve an OpenAPI spec for the API.

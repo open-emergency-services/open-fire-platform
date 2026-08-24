@@ -11,6 +11,7 @@ import { IngestModule } from './ingest/ingest.module';
 import { HydrantInspectionsModule } from './modules/hydrant-inspections/hydrant-inspections.module';
 import { RecordsModule } from './modules/records/records.module';
 import { InsightsModule } from './insights/insights.module';
+import { StandardsModule } from './standards/standards.module';
 
 /**
  * Wave-0 API. As modules are added (scheduling, responder, ePCR…), each becomes
@@ -30,6 +31,7 @@ import { InsightsModule } from './insights/insights.module';
     HydrantInspectionsModule,
     RecordsModule,
     InsightsModule,
+    StandardsModule,
   ],
 })
 export class AppModule {}

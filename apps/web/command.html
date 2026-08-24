@@ -206,7 +206,7 @@
     <div id="widgets">
 
       <div class="card w-timers">
-        <div class="hd"><h2>⏱ Active timers · obligations</h2><span class="spacer"></span><span class="tag" id="timerCount">0 active</span></div>
+        <div class="hd"><h2>⏱ Active timers · obligations</h2><span class="spacer"></span><span class="tag" id="stdSource" title="Which timing standards are in force">built-in defaults</span><span class="tag" id="timerCount">0 active</span></div>
         <div id="timers"><div class="empty" style="color:var(--muted);font-size:13px;">No active timers.</div></div>
         <div class="note" style="margin-top:8px;">Sorted by urgency. Green = resolved — <b>tap a green timer to clear it</b>. A running or overdue timer can’t be dismissed until it’s handled.</div>
       </div>
@@ -666,10 +666,31 @@
     es.addEventListener('incident.declared', function(m){ try{ var e=JSON.parse(m.data), p=e.payload||{}; intake({ type:'dispatch', incidentType:p.incidentType||'Incident', address:p.address||p.id, at:now() }); }catch(x){} });
   }
 
+  // Server-delivered timer standards (F6). Best-effort: if the API answers, the
+  // department's effective standards replace the built-in defaults before any timer
+  // is created; if it doesn't (offline demo), the built-in table stands.
+  function loadStandards(done){
+    fetch(API+'/standards/timers', { headers: authHeaders() })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(v){
+        if (v && v.effective){
+          for (var k in v.effective){ if (Object.prototype.hasOwnProperty.call(STANDARDS, k)) STANDARDS[k] = v.effective[k]; }
+          PAR_MIN = STANDARDS.par;
+          var customized = v.override && Object.keys(v.override).length;
+          var tag = el('stdSource');
+          if (tag){ tag.textContent = customized ? (v.departmentId+' · customized') : 'platform defaults'; }
+        }
+      })
+      .catch(function(){})
+      .then(function(){ done(); });
+  }
+
   // ------------------------------------------------------------------ boot
   el('strat').onclick = function(){ if(state.incident) intake({ type:'strategy', strategy: state.incident.strategy==='offensive'?'defensive':'offensive', note:'command decision' }); };
   el('modeBtn').onclick = function(){ if (LIVE) location.href = location.pathname; else runDemo(); };
-  if (LIVE){ el('modeBtn').textContent='● live mode'; runLive(); } else { runDemo(); }
+  loadStandards(function(){
+    if (LIVE){ el('modeBtn').textContent='● live mode'; runLive(); } else { runDemo(); }
+  });
 })();
 </script>
 </body>
