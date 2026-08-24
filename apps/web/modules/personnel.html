@@ -38,6 +38,7 @@
 <main>
   <section class="card">
     <h2>New record</h2>
+    <div id="piiNote" style="font-size:12px;margin:0 0 10px;padding:8px 10px;border-radius:8px;background:rgba(210,153,34,.10);border:1px solid rgba(210,153,34,.35);color:var(--warn);display:none;"></div>
     <form id="form">
       <label>First Name</label>
       <input name="first_name" />
@@ -75,6 +76,7 @@
   </section>
   <section class="card">
     <h2>Recorded — Personnel record</h2>
+    <div id="piiListNote" class="fields-note" style="margin:0 0 8px;display:none;"></div>
     <div class="check" style="margin:0 0 8px;"><input type="checkbox" id="showDeleted" /><label>Show deleted (voided)</label></div>
     <div id="list"><div class="empty">None yet.</div></div>
   </section>
@@ -167,9 +169,57 @@
       alert('History for '+id+':\n\n'+lines);
     }).catch(function(){});
   }
-  function cell(rec,name){ var v=(rec.data||{})[name];
+  function cell(rec,name){
+    // A vaulted PII field is absent from the read model (only a token remains). Show a lock,
+    // not a blank dash, so it's clear the column is masked-by-design rather than empty.
+    if (PII.indexOf(name) >= 0 && ((rec.data||{})[name] == null)) {
+      return (rec.pii && rec.pii.erased) ? '<span style="color:var(--bad);">⌫ erased</span>' : '<span style="color:var(--muted);" title="Vaulted PII — masked in lists">🔒 masked</span>';
+    }
+    var v=(rec.data||{})[name];
     if(v==null) return '—'; if(v===true) return '✓'; if(v===false) return '—';
     if(Array.isArray(v)) return v.join(', '); if(typeof v==='object') return JSON.stringify(v); return String(v);
+  }
+
+  // ---- PII policy (F9): which fields the server vaults, so we can mark them ----
+  var PII = [];
+  function loadPiiPolicy(){
+    afetch(API+'/records/'+MODULE+'/pii-policy').then(function(r){ return r.ok?r.json():null; }).then(function(j){
+      PII = (j&&j.piiFields)||[];
+      if(!PII.length) return;
+      var pretty = PII.map(function(f){return f.replace(/_/g,' ');}).join(', ');
+      var note = document.getElementById('piiNote');
+      note.style.display='block';
+      note.innerHTML = '🔒 <b>Protected fields</b> ('+pretty+') are vaulted (ADR-0007/0009): kept out of the '+
+        'event log, stored encrypted, and <b>masked in lists</b>. An officer can reveal them per record; '+
+        '"erase PII" honors a right-to-erasure request while the record and its audit trail survive.';
+      var ln = document.getElementById('piiListNote'); ln.style.display='block';
+      ln.innerHTML = '🔒 = a vaulted PII field, masked here by design. Use <b>reveal</b> (officer) to read it, or <b>erase PII</b> to destroy it.';
+      // badge each PII field's label in the form
+      PII.forEach(function(f){
+        var elx = form.elements[f]; if(!elx) return;
+        var lab = elx.previousElementSibling;
+        if(lab && lab.tagName==='LABEL' && lab.querySelector('.piibadge')==null){
+          lab.insertAdjacentHTML('beforeend',' <span class="piibadge" title="Vaulted PII" style="color:var(--warn);font-size:10px;">🔒 PII</span>');
+        }
+      });
+    }).catch(function(){});
+  }
+  function revealPii(id){
+    afetch(API+'/records/'+MODULE+'/'+id).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(rec){
+      var d = rec.data||{};
+      var shown = PII.filter(function(f){ return d[f]!=null; });
+      if(rec.pii && rec.pii.erased){ alert('PII for this record was erased (right-to-erasure). Nothing to reveal.'); return; }
+      if(!shown.length){ alert('PII is hidden. Revealing requires officer sign-in.'); return; }
+      var lines = shown.map(function(f){ var v=d[f]; return f.replace(/_/g,' ')+': '+(Array.isArray(v)?v.join(', '):v); }).join('\n');
+      alert('Protected PII for this record:\n\n'+lines+'\n\n(This reveal is officer-gated on the server.)');
+    }).catch(function(err){ msg.className='msg err'; msg.textContent='Reveal failed: '+err.message; });
+  }
+  function erasePii(id){
+    if(!confirm('Erase this person\'s protected PII? The record and its full audit trail are kept; the PII itself is destroyed (right-to-erasure). This cannot be undone.')) return;
+    afetch(API+'/records/'+MODULE+'/'+id+'/erase-pii',{method:'POST'})
+      .then(function(r){ if(r.status===403) throw new Error('officer role required'); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(){ msg.className='msg ok'; msg.textContent='PII erased (record + audit trail kept).'; load(); })
+      .catch(function(err){ msg.className='msg err'; msg.textContent='Erase failed: '+err.message; });
   }
   function toggleRelated(a){
     var tr = a.closest('tr'), nx = tr.nextSibling;
@@ -193,18 +243,23 @@
           '<td><a href="#" data-hist="'+rec.id+'" style="color:var(--muted);">history</a></td></tr>'; }
         var tds = COLS.map(function(c){ return '<td>'+cell(rec,c)+'</td>'; }).join('');
         var rel = CHILDREN.length ? ' · <a href="#" data-rel="'+rec.id+'" style="color:var(--ok);">related ▾</a>' : '';
+        var piiActions = PII.length ? (' · <a href="#" data-reveal="'+rec.id+'" style="color:var(--warn);">reveal</a>'+
+          ((rec.pii&&rec.pii.erased)?'':' · <a href="#" data-erasepii="'+rec.id+'" style="color:var(--bad);">erase PII</a>')) : '';
         return '<tr>'+tds+'<td style="white-space:nowrap;"><a href="#" data-edit="'+rec.id+'" style="color:var(--accent);">edit</a> · '+
           '<a href="#" data-hist="'+rec.id+'" style="color:var(--muted);">hist</a> · '+
-          '<a href="#" data-del="'+rec.id+'" style="color:var(--bad);">del</a>'+rel+'</td></tr>';
+          '<a href="#" data-del="'+rec.id+'" style="color:var(--bad);">del</a>'+piiActions+rel+'</td></tr>';
       }).join('');
       box.innerHTML='<table><thead><tr>'+head+'</tr></thead><tbody>'+rows+'</tbody></table>';
       box.querySelectorAll('[data-edit]').forEach(function(a){a.onclick=function(e){e.preventDefault();startEdit(a.getAttribute('data-edit'));};});
       box.querySelectorAll('[data-del]').forEach(function(a){a.onclick=function(e){e.preventDefault();del(a.getAttribute('data-del'));};});
       box.querySelectorAll('[data-hist]').forEach(function(a){a.onclick=function(e){e.preventDefault();showHistory(a.getAttribute('data-hist'));};});
       box.querySelectorAll('[data-rel]').forEach(function(a){a.onclick=function(e){e.preventDefault();toggleRelated(a);};});
+      box.querySelectorAll('[data-reveal]').forEach(function(a){a.onclick=function(e){e.preventDefault();revealPii(a.getAttribute('data-reveal'));};});
+      box.querySelectorAll('[data-erasepii]').forEach(function(a){a.onclick=function(e){e.preventDefault();erasePii(a.getAttribute('data-erasepii'));};});
     }).catch(function(){ document.getElementById('list').innerHTML='<div class="empty">API offline — start the server or pass ?api=…</div>'; });
   }
   showDeleted.addEventListener('change', load);
+  loadPiiPolicy();
   load();
 })();
 </script>

@@ -37,8 +37,11 @@ Grounded in the ADR action items, code notes, and BACKLOG as of this writing.
 - [x] **F8. OpenAPI contract** (ADR-0001 #2) — generate/serve an OpenAPI spec for the API.
   — `@nestjs/swagger` introspects the live routes; `GET /api/v1/openapi.json` (30 paths, OpenAPI
   3.0) + interactive `GET /api/v1/docs` (assets bundled locally, offline-capable). Verified.
-- [ ] **F9. Personnel PII UX** — mark PII fields on the screen, show that the list masks them, add
-  an "erase PII" control (backend already supports it).
+- [x] **F9. Personnel PII UX** — mark PII fields on the screen, show that the list masks them, add
+  an "erase PII" control (backend already supports it). — new `GET /records/:module/pii-policy`
+  drives it (no drift): personnel.html badges each vaulted field 🔒, shows the masking note, renders
+  🔒-masked cells, and adds officer reveal + erase-PII per row. Also **added `last_4_ssn` to the
+  personnel PII policy** (was unvaulted). Verified headlessly + over HTTP; +1 unit test.
 - [ ] **F10. Essential-writes-only guard** (ADR-0005 #5) — enforce in code that only the Essential
   ingest path writes to the Core (architectural invariant).
 

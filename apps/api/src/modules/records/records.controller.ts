@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
-import { RecordsService } from './records.service';
+import { RecordsService, piiFieldsFor } from './records.service';
 import { CurrentPrincipal, Roles } from '../../auth/decorators';
 import { hasRole, Principal } from '../../auth/principal';
 
@@ -41,6 +41,12 @@ export class RecordsController {
     @Query('parentId') parentId?: string,
   ) {
     return this.svc.list(module, includeDeleted === '1' || includeDeleted === 'true', parentId || undefined, p.departmentId);
+  }
+
+  /** Which fields this module vaults as PII (names only), so the UI can mark them. */
+  @Get('pii-policy')
+  piiPolicy(@Param('module') module: string) {
+    return { module, piiFields: piiFieldsFor(module) };
   }
 
   @Get(':id/history')

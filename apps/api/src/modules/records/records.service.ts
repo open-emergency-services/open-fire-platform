@@ -20,8 +20,13 @@ import { GenericRecord, HistoryEntry, Tombstone } from './records.entity';
 // stored in the PII vault and replaced by an opaque token. Extend as PII-bearing modules
 // (personnel, patient/ePCR, …) are built.
 const PII_FIELDS: Record<string, string[]> = {
-  personnel: ['first_name', 'last_name', 'dob', 'race', 'gender'],
+  personnel: ['first_name', 'last_name', 'last_4_ssn', 'dob', 'race', 'gender'],
 };
+
+/** The PII policy, exposed so the UI can mark which fields are vaulted (ADR-0007/0009). */
+export function piiFieldsFor(module: string): string[] {
+  return PII_FIELDS[module] ?? [];
+}
 
 // A record in this module is a live incident the command board / SSE consumers should see.
 const LIVE_INCIDENT_MODULE = 'incident-core';

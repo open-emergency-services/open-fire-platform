@@ -81,6 +81,18 @@ describe('RecordsService (generic module engine)', () => {
     expect(await vault.get(rec.pii!.ref)).toBeNull();
   });
 
+  it('treats last_4_ssn as vaulted PII for personnel (never in the log)', async () => {
+    const vault = new ExternalizedPiiVault();
+    const svc2 = new RecordsService(store, events, undefined, vault);
+    const rec = await svc2.create('personnel', { first_name: 'Sam', last_4_ssn: 6789, station_assignment: 'S3' });
+    expect(rec.data.last_4_ssn).toBeUndefined();
+    expect(rec.pii?.fields).toContain('last_4_ssn');
+    const created = (await store.all()).find((e) => e.source_type === 'record.personnel.created')!;
+    expect(JSON.stringify(created.raw)).not.toContain('6789');
+    const revealed = (await svc2.read('personnel', rec.id, undefined, true)) as GenericRecord;
+    expect(revealed.data.last_4_ssn).toBe(6789);
+  });
+
   it('rebuilds vaulted personnel from the log — the token survives replay', async () => {
     const vault = new ExternalizedPiiVault();
     const a = new RecordsService(store, events, undefined, vault);
