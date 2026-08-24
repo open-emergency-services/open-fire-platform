@@ -34,7 +34,9 @@ Grounded in the ADR action items, code notes, and BACKLOG as of this writing.
   reference data) serves the l1/l2/l3 hierarchy from the schema; incident-core.html cascades
   category→subtype→specific, writes composite codes into `incident_final_type`, chips with a ★ set
   the one `incident_final_type_primary`. Verified headlessly (Playwright) + 1 contract test.
-- [ ] **F8. OpenAPI contract** (ADR-0001 #2) — generate/serve an OpenAPI spec for the API.
+- [x] **F8. OpenAPI contract** (ADR-0001 #2) — generate/serve an OpenAPI spec for the API.
+  — `@nestjs/swagger` introspects the live routes; `GET /api/v1/openapi.json` (30 paths, OpenAPI
+  3.0) + interactive `GET /api/v1/docs` (assets bundled locally, offline-capable). Verified.
 - [ ] **F9. Personnel PII UX** — mark PII fields on the screen, show that the list masks them, add
   an "erase PII" control (backend already supports it).
 - [ ] **F10. Essential-writes-only guard** (ADR-0005 #5) — enforce in code that only the Essential
@@ -55,6 +57,12 @@ Grounded in the ADR action items, code notes, and BACKLOG as of this writing.
 - [ ] D9. DB-backed user store; auth-event auditing; rate limiting / admission control.
 - [ ] D10. Recordings / transcription / real-time translation (BACKLOG) — biggest leaked-PII source;
   build on ADR-0009.
+- [ ] D11. **Container runtime module resolution** *(surfaced)* — the repo installs with pnpm
+  (non-hoisted: `@nestjs/core` etc. live in `apps/api/node_modules`, not the root), but the API
+  Dockerfile's runtime stage copies only the root `node_modules`, so the image can't resolve its
+  deps at boot. The image *builds* (CI only builds, never boots it), so this was invisible. Fix
+  with `pnpm --filter @ofp/api deploy --prod` to produce a self-contained bundle. Deployment-only;
+  the native run path (used for all functional verification) is unaffected.
 
 ## Surfaced while working (fixed in place)
 
