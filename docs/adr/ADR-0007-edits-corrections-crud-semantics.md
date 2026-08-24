@@ -128,5 +128,12 @@ erasable. All manageable, none exotic.
        → 409 on conflict.)*
 4. [ ] Define the editability lifecycle (draft/submitted/closed) and enforce at the command layer.
 5. [x] PII strategy — **both** implemented and interchangeable (`apps/api/src/pii/`): externalized
-       (default) and crypto-shred, config-driven via `PII_STRATEGY`. *(Wire the first real consumer
-       — the personnel/roster module — when built; pairs with CJIS/HIPAA compliance.)*
+       (default) and crypto-shred, config-driven via `PII_STRATEGY`.
+6. [x] **PII vault wired into a real module.** The records engine is now PII-aware via a
+       per-module field policy (`PII_FIELDS`): for `personnel` the personal fields
+       (first_name/last_name/dob/race/gender) go to the vault and only an opaque token enters
+       the log — the immutable log holds no plaintext PII. Officers re-hydrate PII on read;
+       responders see the record masked; `POST /records/:module/:id/erase-pii` destroys the
+       PII (right-to-erasure) while the record + audit trail survive and the token resolves to
+       null. Survives log replay (the token is what's stored). Verified end-to-end + 2 tests.
+       *(Adding another PII-bearing module = one line in `PII_FIELDS`.)*

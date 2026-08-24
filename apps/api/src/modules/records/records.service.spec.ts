@@ -2,7 +2,9 @@ import 'reflect-metadata';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { InMemoryEventStore } from '../../core/event-store';
 import { EventPublisher } from '../../events/event-publisher';
+import { ExternalizedPiiVault } from '../../pii/externalized-pii-vault';
 import { RecordsService } from './records.service';
+import { GenericRecord } from './records.entity';
 
 describe('RecordsService (generic module engine)', () => {
   let store: InMemoryEventStore;
@@ -49,6 +51,45 @@ describe('RecordsService (generic module engine)', () => {
     expect(svc.lookup('fire', a.id, 'DEPT_A')).toBeTruthy();
     // and cannot edit it
     await expect(svc.update('fire', a.id, { x: 9 }, undefined, undefined, 'DEPT_B')).rejects.toThrow(/not found/i);
+  });
+
+  it('vaults PII for personnel: no plaintext in the log, re-hydrate on read, erase destroys it', async () => {
+    const vault = new ExternalizedPiiVault();
+    const svc2 = new RecordsService(store, events, undefined, vault);
+    const rec = await svc2.create('personnel', {
+      first_name: 'Jane', last_name: 'Doe', dob: '1990-01-01', station_assignment: 'Station 1',
+    });
+    // read model holds no PII — only a token + the non-PII fields
+    expect(rec.data.first_name).toBeUndefined();
+    expect(rec.data.station_assignment).toBe('Station 1');
+    expect(rec.pii?.fields).toContain('first_name');
+    // the immutable log contains NO plaintext PII
+    const created = (await store.all()).find((e) => e.source_type === 'record.personnel.created')!;
+    expect(JSON.stringify(created.raw)).not.toContain('Jane');
+    expect(JSON.stringify(created.normalized)).not.toContain('Doe');
+    // officer read re-hydrates; non-officer read omits PII
+    const revealed = (await svc2.read('personnel', rec.id, undefined, true)) as GenericRecord;
+    expect(revealed.data.first_name).toBe('Jane');
+    const masked = (await svc2.read('personnel', rec.id, undefined, false)) as GenericRecord;
+    expect(masked.data.first_name).toBeUndefined();
+    // right-to-erasure: PII destroyed, record + token survive, token resolves to null
+    await svc2.erasePii('personnel', rec.id);
+    const after = (await svc2.read('personnel', rec.id, undefined, true)) as GenericRecord;
+    expect(after.pii?.erased).toBe(true);
+    expect(after.data.first_name).toBeUndefined();
+    expect(svc2.getOrThrow('personnel', rec.id)).toBeTruthy(); // the record itself still exists
+    expect(await vault.get(rec.pii!.ref)).toBeNull();
+  });
+
+  it('rebuilds vaulted personnel from the log — the token survives replay', async () => {
+    const vault = new ExternalizedPiiVault();
+    const a = new RecordsService(store, events, undefined, vault);
+    const rec = await a.create('personnel', { first_name: 'Ann', last_name: 'Lee' });
+    const b = new RecordsService(store, events, undefined, vault);
+    await b.onApplicationBootstrap();
+    const r2 = (await b.read('personnel', rec.id, undefined, true)) as GenericRecord;
+    expect(r2.pii?.ref).toBe(rec.pii?.ref);
+    expect(r2.data.first_name).toBe('Ann');
   });
 
   it('rejects a stale edit (optimistic concurrency)', async () => {

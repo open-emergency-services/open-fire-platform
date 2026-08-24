@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { RecordsService } from './records.service';
 import { CurrentPrincipal, Roles } from '../../auth/decorators';
-import { Principal } from '../../auth/principal';
+import { hasRole, Principal } from '../../auth/principal';
 
 /**
  * Generic Regular-tier records endpoints — one controller serves every module screen.
@@ -51,7 +51,15 @@ export class RecordsController {
 
   @Get(':id')
   get(@Param('module') module: string, @Param('id') id: string, @CurrentPrincipal() p: Principal) {
-    return this.svc.lookup(module, id, p.departmentId);
+    // Vaulted PII is re-hydrated only for officers+; responders see the record without it.
+    return this.svc.read(module, id, p.departmentId, hasRole(p, 'officer'));
+  }
+
+  /** Right-to-erasure: destroy this record's vaulted PII. The record + audit trail survive. */
+  @Roles('officer')
+  @Post(':id/erase-pii')
+  erasePii(@Param('module') module: string, @Param('id') id: string, @CurrentPrincipal() p: Principal) {
+    return this.svc.erasePii(module, id, p.departmentId);
   }
 
   @Roles('responder')

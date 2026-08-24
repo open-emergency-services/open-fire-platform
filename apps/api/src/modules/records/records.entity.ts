@@ -17,6 +17,13 @@ export interface GenericRecord {
   /** Cross-link: the record this one is attached to (e.g. a `fire` sub-record → its `incident-core`). */
   parentId?: string;
   parentModule?: string;
+  /**
+   * PII pointer (ADR-0007/0009). For modules with a PII policy (e.g. personnel), the
+   * personal fields are NOT in `data` or the log — they live in the PII vault and only this
+   * opaque token is stored. `fields` names which fields were vaulted; `erased` means a
+   * right-to-erasure destroyed them (the token survives but resolves to null).
+   */
+  pii?: { ref: string; fields: string[]; erased?: boolean };
   createdAt: string;
   updatedAt: string;
 }

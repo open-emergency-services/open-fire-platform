@@ -12,7 +12,15 @@ import { EventStore } from '../../core/event-store';
 import { StoredEvent } from '../../core/stored-event';
 import { EventPublisher } from '../../events/event-publisher';
 import { Projector } from '../../projections/projector';
+import { PiiVault } from '../../pii/pii-vault';
 import { GenericRecord, HistoryEntry, Tombstone } from './records.entity';
+
+// Per-module PII policy (ADR-0007/0009): these fields never enter the event log — they are
+// stored in the PII vault and replaced by an opaque token. Extend as PII-bearing modules
+// (personnel, patient/ePCR, …) are built.
+const PII_FIELDS: Record<string, string[]> = {
+  personnel: ['first_name', 'last_name', 'dob', 'race', 'gender'],
+};
 
 // A record in this module is a live incident the command board / SSE consumers should see.
 const LIVE_INCIDENT_MODULE = 'incident-core';
@@ -21,12 +29,12 @@ export interface ParentRef { module: string; id: string; }
 
 // Event type is `record.<module>.<verb>` — the module lives in the type and the correlation,
 // so the immutable log stays the single source of truth for every module screen.
-const VERBS = ['created', 'updated', 'deleted'] as const;
+const VERBS = ['created', 'updated', 'deleted', 'pii_erased'] as const;
 function typeFor(module: string, verb: (typeof VERBS)[number]): string {
   return `record.${module}.${verb}`;
 }
 function parseType(sourceType: string): { module: string; verb: string } | null {
-  const m = /^record\.(.+)\.(created|updated|deleted)$/.exec(sourceType);
+  const m = /^record\.(.+)\.(created|updated|deleted|pii_erased)$/.exec(sourceType);
   return m ? { module: m[1], verb: m[2] } : null;
 }
 
@@ -53,7 +61,33 @@ export class RecordsService implements OnApplicationBootstrap {
     // Optional so unit tests can construct the service standalone; wired in production so an
     // incident-core record lands in the one canonical incident read model (/api/v1/incidents).
     @Optional() private readonly projector?: Projector,
+    // The PII vault (global). Present in production; modules with a PII policy require it.
+    @Optional() private readonly pii?: PiiVault,
   ) {}
+
+  /** Split a payload into vault-bound PII and the rest, per the module's PII policy. */
+  private splitPii(module: string, data: Data): { pii: Data; rest: Data } {
+    const fields = PII_FIELDS[module];
+    if (!fields) return { pii: {}, rest: data };
+    const pii: Data = {};
+    const rest: Data = { ...data };
+    for (const f of fields) {
+      if (f in rest) { pii[f] = rest[f]; delete rest[f]; }
+    }
+    return { pii, rest };
+  }
+
+  /** Vault a subject's PII and return the log marker (or null when there's nothing/no vault). */
+  private async vaultPut(subjectId: string, pii: Data): Promise<{ ref: string; fields: string[] } | null> {
+    const fields = Object.keys(pii);
+    if (!fields.length) return null;
+    if (!this.pii) {
+      this.log.warn(`No PII vault configured — refusing to write PII fields [${fields.join(', ')}] to the log`);
+      return null; // caller falls back to storing full data only if there was no vault; see create/update
+    }
+    const ref = await this.pii.put(subjectId, pii);
+    return { ref, fields };
+  }
 
   /** Feed an incident-core event into the incident read model live (parity with boot rebuild). */
   private projectIncident(module: string, event: StoredEvent): void {
@@ -85,13 +119,17 @@ export class RecordsService implements OnApplicationBootstrap {
     const parent = opts?.parent;
     const departmentId = opts?.departmentId ?? DEFAULT_DEPT;
     const parentMeta = parent ? { parentId: parent.id, parentModule: parent.module } : {};
+    // PII split: personal fields go to the vault, only a token enters the log (ADR-0007/0009).
+    const { pii, rest } = this.splitPii(module, data);
+    const piiMeta = await this.vaultPut(id, pii);
+    const logData = piiMeta ? rest : data;
     const { event } = await this.store.append({
       event_id: randomUUID(),
       source: 'ui',
       source_type: typeFor(module, 'created'),
       occurred_at: new Date().toISOString(),
-      raw: { id, module, departmentId, data, ...parentMeta },
-      normalized: { id, module, departmentId, data, ...parentMeta },
+      raw: { id, module, departmentId, data: logData, ...parentMeta, ...(piiMeta ? { pii: piiMeta } : {}) },
+      normalized: { id, module, departmentId, data: logData, ...parentMeta, ...(piiMeta ? { pii: piiMeta } : {}) },
       correlation: { record_id: id, module, department_id: departmentId, ...(parent ? { parent_id: parent.id } : {}) },
     });
     this.project(event, module);
@@ -123,13 +161,22 @@ export class RecordsService implements OnApplicationBootstrap {
   async update(module: string, id: string, changes: Data, expectedVersion?: number, reason?: string, departmentId?: string): Promise<GenericRecord> {
     const rec = this.getOrThrow(module, id, departmentId);
     this.checkVersion(rec, expectedVersion);
+    // PII changes: merge onto the vaulted PII (never into the log) and carry a fresh token.
+    const { pii, rest } = this.splitPii(module, changes);
+    let piiMeta: { ref: string; fields: string[] } | null = null;
+    let logChanges = changes;
+    if (Object.keys(pii).length && this.pii) {
+      const current = rec.pii && !rec.pii.erased ? (await this.pii.get(rec.pii.ref)) ?? {} : {};
+      piiMeta = await this.vaultPut(id, { ...current, ...pii });
+      logChanges = rest;
+    }
     const { event } = await this.store.append({
       event_id: randomUUID(),
       source: 'ui',
       source_type: typeFor(module, 'updated'),
       occurred_at: new Date().toISOString(),
-      raw: { id, module, changes, reason },
-      normalized: { id, module, changes, ...(reason ? { reason } : {}) },
+      raw: { id, module, changes: logChanges, reason, ...(piiMeta ? { pii: piiMeta } : {}) },
+      normalized: { id, module, changes: logChanges, ...(reason ? { reason } : {}), ...(piiMeta ? { pii: piiMeta } : {}) },
       correlation: { record_id: id, module },
     });
     this.project(event, module);
@@ -153,6 +200,42 @@ export class RecordsService implements OnApplicationBootstrap {
     });
     this.project(event, module);
     this.projectIncident(module, event);
+  }
+
+  /**
+   * Right-to-erasure (ADR-0009): destroy a record's PII in the vault. The record and its
+   * token survive in the log (audit intact) but the token now resolves to null. Distinct
+   * from soft-delete: the record stays active, only the personal data is erased.
+   */
+  async erasePii(module: string, id: string, departmentId?: string): Promise<GenericRecord> {
+    const rec = this.getOrThrow(module, id, departmentId);
+    if (!rec.pii) return rec; // no PII on this record
+    if (this.pii) await this.pii.erase(id);
+    const { event } = await this.store.append({
+      event_id: randomUUID(),
+      source: 'ui',
+      source_type: typeFor(module, 'pii_erased'),
+      occurred_at: new Date().toISOString(),
+      raw: { id, module },
+      normalized: { id, module },
+      correlation: { record_id: id, module, department_id: rec.departmentId },
+    });
+    this.project(event, module);
+    return this.getOrThrow(module, id);
+  }
+
+  /**
+   * Read one record, optionally re-hydrating vaulted PII (authorized callers only). PII is
+   * merged back into `data` for display; the log never held it. Erased/absent PII stays absent.
+   */
+  async read(module: string, id: string, departmentId?: string, revealPii = false): Promise<GenericRecord | Tombstone> {
+    const rec = this.lookup(module, id, departmentId);
+    if ('message' in rec) return rec; // tombstone (deleted)
+    if (revealPii && rec.pii && !rec.pii.erased && this.pii) {
+      const pii = await this.pii.get(rec.pii.ref);
+      if (pii) return { ...rec, data: { ...rec.data, ...pii } };
+    }
+    return rec;
   }
 
   async history(module: string, id: string): Promise<HistoryEntry[]> {
@@ -213,21 +296,32 @@ export class RecordsService implements OnApplicationBootstrap {
   }
 
   private project(e: StoredEvent, module: string): void {
-    const n = e.normalized as { id: string; departmentId?: string; data?: Data; changes?: Data; reason?: string; parentId?: string; parentModule?: string };
+    const n = e.normalized as {
+      id: string; departmentId?: string; data?: Data; changes?: Data; reason?: string;
+      parentId?: string; parentModule?: string; pii?: { ref: string; fields: string[] };
+    };
     const ts = e.occurred_at ?? e.received_at;
     const model = this.model(module);
     if (e.source_type === typeFor(module, 'created')) {
       model.set(n.id, {
         id: n.id, module, departmentId: n.departmentId ?? DEFAULT_DEPT, data: n.data ?? {}, version: 1, deleted: false,
         ...(n.parentId ? { parentId: n.parentId, parentModule: n.parentModule } : {}),
+        ...(n.pii ? { pii: n.pii } : {}),
         createdAt: ts, updatedAt: ts,
       });
     } else if (e.source_type === typeFor(module, 'updated')) {
       const rec = model.get(n.id);
-      if (rec) { rec.data = { ...rec.data, ...(n.changes ?? {}) }; rec.version += 1; rec.updatedAt = ts; }
+      if (rec) {
+        rec.data = { ...rec.data, ...(n.changes ?? {}) };
+        if (n.pii) rec.pii = n.pii; // new vault token
+        rec.version += 1; rec.updatedAt = ts;
+      }
     } else if (e.source_type === typeFor(module, 'deleted')) {
       const rec = model.get(n.id);
       if (rec) { rec.deleted = true; rec.deletedAt = ts; rec.deletedReason = n.reason; rec.version += 1; rec.updatedAt = ts; }
+    } else if (e.source_type === typeFor(module, 'pii_erased')) {
+      const rec = model.get(n.id);
+      if (rec && rec.pii) { rec.pii = { ...rec.pii, erased: true }; rec.version += 1; rec.updatedAt = ts; }
     }
   }
 }
