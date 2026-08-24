@@ -43,10 +43,18 @@
       <input name="incident_neris_id" title="Unique identifier in NERIS for the incident. [neris_core]" /><div class="desc">Unique identifier in NERIS for the incident. [neris_core]</div>
       <label>Incident Internal Id</label>
       <input name="incident_internal_id" title="Department's internal unique identifier for the incident. [neris_core]" /><div class="desc">Department's internal unique identifier for the incident. [neris_core]</div>
-      <label>Incident Final Type</label>
-      <input name="incident_final_type" title="Disposition or final incident type as assessed on scene. [neris_core]" placeholder="comma-separated" /><div class="desc">Disposition or final incident type as assessed on scene. [neris_core]</div>
-      <label>Incident Final Type Primary</label>
-      <input name="incident_final_type_primary" title="Flag for the primary incident type. Only one type can be `True`. [neris_core]" placeholder="comma-separated" /><div class="desc">Flag for the primary incident type. Only one type can be `True`. [neris_core]</div>
+      <label>Incident Final Type <span style="color:#6b7688;font-size:10px;">(NERIS type — pick from the standard hierarchy)</span></label>
+      <div id="typePicker" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:4px;">
+        <select id="tp_l1" style="flex:1;min-width:120px;"><option value="">— category —</option></select>
+        <select id="tp_l2" disabled style="flex:1;min-width:120px;"><option value="">— subtype —</option></select>
+        <select id="tp_l3" disabled style="flex:1;min-width:120px;"><option value="">— specific —</option></select>
+        <button type="button" id="tp_add" disabled style="width:auto;margin:0;padding:8px 12px;">＋ Add</button>
+      </div>
+      <div id="tp_chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;"></div>
+      <div id="tp_status" class="desc"></div>
+      <input name="incident_final_type" title="Disposition or final incident type as assessed on scene. [neris_core]" placeholder="e.g. FIRE/STRUCTURE_FIRE/… (or use the picker)" /><div class="desc">Disposition or final incident type as assessed on scene — NERIS <code>value_1/value_2/value_3</code> codes. [neris_core]</div>
+      <label>Incident Final Type Primary <span style="color:#6b7688;font-size:10px;">(★ a type above to set)</span></label>
+      <input name="incident_final_type_primary" title="Flag for the primary incident type. Only one type can be `True`. [neris_core]" placeholder="the one primary type code" /><div class="desc">The primary incident type — only one. Click ★ on a chip above to set it. [neris_core]</div>
       <label>Incident Special Modifier <span style="color:#6b7688;font-size:10px;">(ctrl/⌘-click for multiple)</span></label>
       <select name="incident_special_modifier" multiple size="4" title="Incident modifier(s) that can help describe the magnitude or class of the incident."><option value="ACTIVE_ASSAILANT">ACTIVE_ASSAILANT</option><option value="MCI">MCI</option><option value="FEDERAL_DECLARED_DISASTER">FEDERAL_DECLARED_DISASTER</option><option value="STATE_DECLARED_DISASTER">STATE_DECLARED_DISASTER</option><option value="COUNTY_LOCAL_DECLARED_DISASTER">COUNTY_LOCAL_DECLARED_DISASTER</option><option value="URBAN_CONFLAGRATION">URBAN_CONFLAGRATION</option><option value="VIOLENCE_AGAINST_RESPONDER">VIOLENCE_AGAINST_RESPONDER</option></select><div class="desc">Incident modifier(s) that can help describe the magnitude or class of the incident.</div>
       <label>Fire</label>
@@ -172,8 +180,9 @@
       else if (f.k==='json'){ elx.value = (v==null)?'':(typeof v==='object'? JSON.stringify(v) : String(v)); }
       else { elx.value = (v==null)?'':v; } // text + select
     });
+    if (typeof renderTypeChips === 'function') renderTypeChips();
   }
-  function resetForm(){ form.reset(); editing=null; submitBtn.textContent='Save'; cancelBtn.style.display='none'; }
+  function resetForm(){ form.reset(); editing=null; submitBtn.textContent='Save'; cancelBtn.style.display='none'; if (typeof renderTypeChips === 'function') renderTypeChips(); }
   cancelBtn.addEventListener('click', resetForm);
 
   form.addEventListener('submit', function(e){
@@ -241,7 +250,60 @@
       box.querySelectorAll('[data-rel]').forEach(function(a){a.onclick=function(e){e.preventDefault();toggleRelated(a);};});
     }).catch(function(){ document.getElementById('list').innerHTML='<div class="empty">API offline — start the server or pass ?api=…</div>'; });
   }
+  // ================================================================== NERIS TYPE PICKER (F7)
+  // The incident_final_type / _primary fields are NERIS value_1/value_2/value_3 codes.
+  // Instead of free text, cascade through the generated hierarchy served at
+  // /neris/incident-types (single source of truth — same data the validator uses).
+  var TYPES = [];
+  function escp(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function typeInput(){ return form.elements['incident_final_type']; }
+  function primaryInput(){ return form.elements['incident_final_type_primary']; }
+  function currentCodes(){ return (typeInput().value||'').split(',').map(function(s){return s.trim();}).filter(Boolean); }
+  function labelFor(code){ var t=TYPES.find(function(x){return x.l1+'/'+x.l2+'/'+x.l3===code;}); return t?t.label:code; }
+  function setCodes(arr){ typeInput().value = arr.join(', '); renderTypeChips(); }
+  function renderTypeChips(){
+    var box=document.getElementById('tp_chips'); if(!box) return;
+    var codes=currentCodes(), primary=(primaryInput().value||'').trim();
+    box.innerHTML = codes.map(function(c){
+      var isP=c===primary;
+      return '<span style="display:inline-flex;align-items:center;gap:6px;background:#0e131b;border:1px solid var(--line);padding:3px 8px;border-radius:12px;font-size:12px;">'+
+        '<a href="#" data-star="'+encodeURIComponent(c)+'" title="Set as the one primary type" style="text-decoration:none;color:'+(isP?'var(--warn)':'var(--muted)')+';">★</a>'+
+        '<span title="'+escp(labelFor(c))+'">'+escp(c)+'</span>'+
+        '<a href="#" data-x="'+encodeURIComponent(c)+'" title="Remove" style="text-decoration:none;color:var(--bad);">✕</a></span>';
+    }).join('');
+    box.querySelectorAll('[data-x]').forEach(function(a){a.onclick=function(e){e.preventDefault();var c=decodeURIComponent(a.getAttribute('data-x'));
+      if((primaryInput().value||'').trim()===c) primaryInput().value='';
+      setCodes(currentCodes().filter(function(x){return x!==c;}));};});
+    box.querySelectorAll('[data-star]').forEach(function(a){a.onclick=function(e){e.preventDefault();primaryInput().value=decodeURIComponent(a.getAttribute('data-star'));renderTypeChips();};});
+  }
+  function initTypePicker(){
+    var l1=document.getElementById('tp_l1'),l2=document.getElementById('tp_l2'),l3=document.getElementById('tp_l3'),
+        add=document.getElementById('tp_add'),status=document.getElementById('tp_status');
+    if(!l1) return;
+    function uniq(a){ return a.filter(function(v,i){return a.indexOf(v)===i;}); }
+    afetch(API+'/neris/incident-types').then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(j){ TYPES=(j&&j.types)||[];
+        var l1s=uniq(TYPES.map(function(t){return t.l1;}));
+        l1.innerHTML='<option value="">— category —</option>'+l1s.map(function(v){return '<option>'+escp(v)+'</option>';}).join('');
+        status.textContent=TYPES.length+' NERIS incident types loaded — value_1 / value_2 / value_3.';
+        renderTypeChips();
+      })
+      .catch(function(){ status.textContent='Type list unavailable — enter codes manually below.'; });
+    l1.onchange=function(){ l2.innerHTML='<option value="">— subtype —</option>'; l3.innerHTML='<option value="">— specific —</option>'; l3.disabled=true; add.disabled=true;
+      if(!l1.value){ l2.disabled=true; return; }
+      var l2s=uniq(TYPES.filter(function(t){return t.l1===l1.value;}).map(function(t){return t.l2;}));
+      l2.innerHTML+=l2s.map(function(x){return '<option>'+escp(x)+'</option>';}).join(''); l2.disabled=false; };
+    l2.onchange=function(){ l3.innerHTML='<option value="">— specific —</option>'; add.disabled=true;
+      if(!l2.value){ l3.disabled=true; return; }
+      var l3s=TYPES.filter(function(t){return t.l1===l1.value&&t.l2===l2.value;});
+      l3.innerHTML+=l3s.map(function(t){return '<option value="'+escp(t.l3)+'">'+escp(t.l3)+'</option>';}).join(''); l3.disabled=false; };
+    l3.onchange=function(){ add.disabled=!l3.value; };
+    add.onclick=function(){ if(!l3.value) return; var code=l1.value+'/'+l2.value+'/'+l3.value; var cur=currentCodes();
+      if(cur.indexOf(code)<0){ cur.push(code); if(!(primaryInput().value||'').trim()) primaryInput().value=code; setCodes(cur); } };
+  }
+
   showDeleted.addEventListener('change', load);
+  initTypePicker();
   load();
 })();
 </script>

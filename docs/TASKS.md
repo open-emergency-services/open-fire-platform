@@ -29,8 +29,11 @@ Grounded in the ADR action items, code notes, and BACKLOG as of this writing.
   — `GET /api/v1/standards/timers` (any member) returns defaults + dept override + effective merge;
   `PUT` (officer) sets the dept override, event-sourced + rebuilt on boot. Command board fetches
   and merges before creating timers, shows platform-vs-customized. Verified + 5 unit tests.
-- [ ] **F7. Incident-type picker** — use the generated NERIS incident-type hierarchy (128 types)
-  in the incident-core screen instead of free text.
+- [x] **F7. Incident-type picker** — use the generated NERIS incident-type hierarchy (128 types)
+  in the incident-core screen instead of free text. — `GET /api/v1/neris/incident-types` (public
+  reference data) serves the l1/l2/l3 hierarchy from the schema; incident-core.html cascades
+  category→subtype→specific, writes composite codes into `incident_final_type`, chips with a ★ set
+  the one `incident_final_type_primary`. Verified headlessly (Playwright) + 1 contract test.
 - [ ] **F8. OpenAPI contract** (ADR-0001 #2) — generate/serve an OpenAPI spec for the API.
 - [ ] **F9. Personnel PII UX** — mark PII fields on the screen, show that the list masks them, add
   an "erase PII" control (backend already supports it).
