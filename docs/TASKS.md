@@ -75,9 +75,11 @@ Grounded in the ADR action items, code notes, and BACKLOG as of this writing.
   the runtime image is minimal and reproducible, and dropped the broken `|| npm install` fallback
   (npm can't parse `workspace:*`). Verified **natively, no Docker**: `node dist/main.js` from the
   bundle in `NODE_ENV=production` starts every module, maps all routes, and answers health 200 +
-  the 128 NERIS types with 0 errors. **Still to confirm on a Docker host:** `docker build` +
-  `docker compose up` end-to-end — this sandbox has no Docker daemon, so that last mile is the one
-  step left, ideally on the homelab container.
+  the 128 NERIS types with 0 errors. **Confirmed on a Docker host (2026-09-08):** built and run on
+  the `.200` homelab daemon (Windows/Docker Desktop, linux/amd64 engine) via the `remote-windows`
+  docker context — the API image boots with no `MODULE_NOT_FOUND`, answers health 200 and the 128
+  NERIS types, and `docker compose up` brings the whole stack (Postgres + API + web + simulator) up
+  with the simulator feeding events. Runbook: `docs/runbooks/d11-docker-verify.md`.
 
 ## Surfaced while working (fixed in place)
 
