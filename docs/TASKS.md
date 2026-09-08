@@ -63,12 +63,21 @@ Grounded in the ADR action items, code notes, and BACKLOG as of this writing.
 - [ ] D9. DB-backed user store; auth-event auditing; rate limiting / admission control.
 - [ ] D10. Recordings / transcription / real-time translation (BACKLOG) — biggest leaked-PII source;
   build on ADR-0009.
-- [ ] D11. **Container runtime module resolution** *(surfaced)* — the repo installs with pnpm
-  (non-hoisted: `@nestjs/core` etc. live in `apps/api/node_modules`, not the root), but the API
-  Dockerfile's runtime stage copies only the root `node_modules`, so the image can't resolve its
-  deps at boot. The image *builds* (CI only builds, never boots it), so this was invisible. Fix
-  with `pnpm --filter @ofp/api deploy --prod` to produce a self-contained bundle. Deployment-only;
-  the native run path (used for all functional verification) is unaffected.
+- [x] D11. **Container runtime module resolution** *(surfaced → fixed)* — the repo installs with
+  pnpm's isolated linker (`@nestjs/core` etc. live in `apps/api/node_modules` as symlinks into the
+  `.pnpm` store, not the repo root), but the API Dockerfile's runtime stage copied only the root
+  `node_modules`, so the image couldn't resolve its deps at boot (`MODULE_NOT_FOUND`). It *built*
+  fine (CI only builds, never boots it), so this stayed invisible. **Fixed:** the build stage now
+  runs `pnpm --filter @ofp/api deploy --prod /bundle` to produce a self-contained, prod-only bundle
+  (workspace `@ofp/neris-schema` injected with its built `dist`; symlinks kept internal to the
+  bundle) and the runtime stage ships that bundle instead of the root `node_modules` + `packages`.
+  Also added an `apps/api` `files` allowlist (`dist` + `migrations`) and a root `.dockerignore` so
+  the runtime image is minimal and reproducible, and dropped the broken `|| npm install` fallback
+  (npm can't parse `workspace:*`). Verified **natively, no Docker**: `node dist/main.js` from the
+  bundle in `NODE_ENV=production` starts every module, maps all routes, and answers health 200 +
+  the 128 NERIS types with 0 errors. **Still to confirm on a Docker host:** `docker build` +
+  `docker compose up` end-to-end — this sandbox has no Docker daemon, so that last mile is the one
+  step left, ideally on the homelab container.
 
 ## Surfaced while working (fixed in place)
 

@@ -1,0 +1,9 @@
+# Keep the Docker build context clean and reproducible: never ship host
+# install/build artifacts into the image — the build stage reinstalls and
+# rebuilds everything from the lockfile and sources.
+.git
+**/node_modules
+**/dist
+*.bundle
+*.log
+.DS_Store

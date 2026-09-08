@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "description": "Open Fire Platform — API (Wave 0: NERIS reporting)",
   "license": "AGPL-3.0-or-later",
+  "files": [
+    "dist",
+    "migrations"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
